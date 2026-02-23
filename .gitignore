@@ -1,13 +1,12 @@
 # Virtual Environment
 venv/
 .venv/
-env/
 
 # Python cache files
 __pycache__/
 *.pyc
 
-# Database files (since you're using SQLite for now)
+# Database files (since we are using SQLite for now)
 *.db
 *.sqlite
 
