@@ -1,4 +1,3 @@
-import csv
 import io
 from typing import Dict, Iterable, List, Optional
 
@@ -27,36 +26,6 @@ def find_header_index(block_lines: List[str], markers: Optional[List[str]] = Non
         if any(marker in upper_line for marker in search_markers):
             return index
     return None
-
-
-def parse_metadata_lines(metadata_lines: List[str]) -> Dict[str, str]:
-    """Parse BSKT metadata lines into a key-value dict."""
-    if not metadata_lines:
-        return {}
-
-    metadata: Dict[str, str] = {}
-
-    first_fields = next(csv.reader([metadata_lines[0]]))
-    if len(first_fields) >= 2:
-        metadata[first_fields[0].strip().upper()] = first_fields[1]
-    if len(first_fields) >= 3:
-        metadata["SS_LONG_CODE"] = first_fields[2]
-    if len(first_fields) >= 5:
-        metadata["FULL_NAME"] = first_fields[4]
-    if len(first_fields) >= 6:
-        metadata["TICKER"] = first_fields[5]
-    if len(first_fields) >= 8:
-        metadata["BASE_CURRENCY"] = first_fields[7]
-
-    for line in metadata_lines[1:]:
-        fields = next(csv.reader([line]))
-        for offset in range(0, len(fields) - 1, 2):
-            key = fields[offset].strip().upper()
-            value = fields[offset + 1]
-            if key:
-                metadata[key] = value
-
-    return metadata
 
 
 def convert_metadata_types(meta: Dict[str, str], type_map: Dict[str, object]) -> Dict[str, object]:

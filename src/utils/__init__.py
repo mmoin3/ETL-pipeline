@@ -5,7 +5,6 @@ from .parsing_helpers import (
 	convert_metadata_types,
 	find_header_index,
 	parse_holdings_csv,
-	parse_metadata_lines,
 	split_blocks,
 )
 
@@ -14,7 +13,6 @@ __all__ = [
 	"FileReader",
 	"split_blocks",
 	"find_header_index",
-	"parse_metadata_lines",
 	"convert_metadata_types",
 	"parse_holdings_csv",
 	"clean_holdings_df",

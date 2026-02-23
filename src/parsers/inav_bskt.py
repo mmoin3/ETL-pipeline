@@ -1,3 +1,4 @@
+import csv
 import pandas as pd
 import logging
 from config import LOG_FILE, LOG_LEVEL, NAV_METADATA_TYPE_MAP
@@ -8,7 +9,6 @@ from utils.parsing_helpers import (
     convert_metadata_types,
     find_header_index,
     parse_holdings_csv,
-    parse_metadata_lines,
     split_blocks,
 )
 
@@ -43,8 +43,8 @@ class BSKTFile(FileReader):
                 lines = handle.readlines()
 
         blocks = split_blocks(lines, start_token="TRADE_DATE")
+        
         funds = []
-
         for block_lines in blocks:
             header_idx = find_header_index(block_lines)
             if header_idx is None:
@@ -53,7 +53,7 @@ class BSKTFile(FileReader):
             metadata_lines = block_lines[:header_idx]
             holdings_lines = block_lines[header_idx:]
 
-            metadata = parse_metadata_lines(metadata_lines)
+            metadata = self._parse_metadata_lines(metadata_lines)
             metadata = self._clean_and_convert_metadata(metadata)
 
             try:
@@ -72,5 +72,33 @@ class BSKTFile(FileReader):
 
     def _clean_holdings_df(self, df: pd.DataFrame) -> pd.DataFrame:
         return clean_holdings_df(df)
+
+    def _parse_metadata_lines(self, metadata_lines):
+        if not metadata_lines:
+            return {}
+
+        metadata = {}
+
+        first_fields = next(csv.reader([metadata_lines[0]]))
+        if len(first_fields) >= 2:
+            metadata[first_fields[0].strip().upper()] = first_fields[1]
+        if len(first_fields) >= 3:
+            metadata["SS_LONG_CODE"] = first_fields[2]
+        if len(first_fields) >= 5:
+            metadata["FULL_NAME"] = first_fields[4]
+        if len(first_fields) >= 6:
+            metadata["TICKER"] = first_fields[5]
+        if len(first_fields) >= 8:
+            metadata["BASE_CURRENCY"] = first_fields[7]
+
+        for line in metadata_lines[1:]:
+            fields = next(csv.reader([line]))
+            for offset in range(0, len(fields) - 1, 2):
+                key = fields[offset].strip().upper()
+                value = fields[offset + 1]
+                if key:
+                    metadata[key] = value
+
+        return metadata
 
 __all__ = ["FileReader", "BSKTFile"]

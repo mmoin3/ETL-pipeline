@@ -18,7 +18,6 @@ from utils.parsing_helpers import (
     convert_metadata_types,
     find_header_index,
     parse_holdings_csv,
-    parse_metadata_lines,
     split_blocks,
 )
 
@@ -48,7 +47,8 @@ class TestParsingHelpers(unittest.TestCase):
         self.assertEqual(header_index, 2)
 
     def test_parse_metadata_lines(self):
-        metadata = parse_metadata_lines(self.sample_lines[:2])
+        parser = BSKTFile("dummy.csv")
+        metadata = parser._parse_metadata_lines(self.sample_lines[:2])
         self.assertEqual(metadata["TRADE_DATE"], "2026-02-18")
         self.assertEqual(metadata["SS_LONG_CODE"], "LCODE123")
         self.assertEqual(metadata["FULL_NAME"], "My Fund")
@@ -58,7 +58,8 @@ class TestParsingHelpers(unittest.TestCase):
         self.assertEqual(metadata["DOMICILE"], "US")
 
     def test_convert_metadata_types(self):
-        parsed = parse_metadata_lines(self.sample_lines[:2])
+        parser = BSKTFile("dummy.csv")
+        parsed = parser._parse_metadata_lines(self.sample_lines[:2])
         converted = convert_metadata_types(parsed, NAV_METADATA_TYPE_MAP)
         self.assertIsInstance(converted["TRADE_DATE"], pd.Timestamp)
         self.assertIsInstance(converted["CREATION_UNIT_SIZE"], float)
