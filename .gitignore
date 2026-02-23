@@ -1,0 +1,23 @@
+# Virtual Environment
+venv/
+.venv/
+env/
+
+# Python cache files
+__pycache__/
+*.pyc
+
+# Database files (since you're using SQLite for now)
+*.db
+*.sqlite
+
+# Environment variables (API keys, secrets)
+.env
+
+# Distribution / Build folders
+dist/
+build/
+*.egg-info/
+
+# Logs
+logs/
