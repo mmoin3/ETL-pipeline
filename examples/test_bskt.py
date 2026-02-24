@@ -5,8 +5,8 @@ import sys
 # ensure src is on path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
 
-from config import DATA_DIR
-from pipeline.extractor import BSKTFile
+from core.logger_config import DATA_DIR
+from parsers import BSKTFile
 
 
 def main():

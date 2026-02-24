@@ -1,7 +1,7 @@
 import csv
 import pandas as pd
 import logging
-from config import LOG_FILE, LOG_LEVEL, NAV_METADATA_TYPE_MAP
+from core.logger_config import LOG_FILE, LOG_LEVEL, NAV_METADATA_TYPE_MAP
 from core.logger_config import setup_logger
 from utils.file_reader import FileReader
 from utils.parsing_helpers import (
