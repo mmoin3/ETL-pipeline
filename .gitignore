@@ -4,10 +4,12 @@ venv/
 .env
 
 #logs and databases
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
 *.db
 *.sqlite
 *.log
+
+__pycache__/
+*.pyc
+*.pyo
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints

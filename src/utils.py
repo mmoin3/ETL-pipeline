@@ -1,7 +1,5 @@
 import pandas as pd
-import os
-import io
-import logging
+import os, io, logging
 
 logger = logging.getLogger(__name__)
 
