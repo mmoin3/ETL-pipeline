@@ -22,8 +22,11 @@ from services.bloomberg_tools import create_session, close_session, bdh, bdp
 
 session = create_session()
 try:
-	hist = bdh(session, ["XIU CN Equity"], ["PX_LAST"], "20260101", "20260220")
-	snap = bdp(session, ["XIU CN Equity"], ["PX_LAST", "VOLUME"])
+	hist = BDH(session, ["XIU CN Equity"], ["PX_LAST"], "20260101", "20260220")
+	snap = BDP(session, ["XIU CN Equity"], ["PX_LAST", "VOLUME"])
 finally:
 	close_session(session)
+
+even simpler function call:
+snap = get_security_info(["XIU CN Equity"],["PX_LAST"])
 ```
