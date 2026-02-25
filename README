@@ -1,0 +1,38 @@
+# Daily ETL Pipeline
+
+## Overview
+This pipeline automates the daily data workflow: extracting data from 10+ source files, cleaning, transforming, and loading into PostgreSQL for analysis.
+
+## Quick Start
+
+### Prerequisites
+- Python 3.9+
+- PostgreSQL 15+
+- 8GB RAM recommended
+
+### Installation
+```bash
+# Clone repo
+git clone <https://github.com/mmoin3/ETL-pipeline.git>
+
+# Set up virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set up environment
+cp .env.example .env
+# Edit .env with your database credentials
+
+## Bloomberg Tools (Simple)
+
+```python
+from services.bloomberg_tools import create_session, close_session, bdh, bdp
+session = create_session()
+try:
+	hist = bdh(session, ["XIU CN Equity"], ["PX_LAST"], "20260101", "20260220")
+	snap = bdp(session, ["XIU CN Equity"], ["PX_LAST", "VOLUME"])
+finally:
+	close_session(session)

@@ -1,5 +1,9 @@
+# Virtual environment and environment files
 venv/
 .venv/
+.env
+
+#logs and databases
 __pycache__/
 *.pyc
 *.pyo
