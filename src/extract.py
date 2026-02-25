@@ -1,6 +1,6 @@
 import io, csv, os
 import pandas as pd
-from utils.logger import setup_logger
+from config import setup_logger
 from config import LOG_FILE, LOG_LEVEL, NAV_METADATA_TYPE_MAP
 
 class FileReader:
@@ -100,7 +100,6 @@ class BSKTFile(FileReader):
                         key = fields[i]
                         val = fields[i + 1]
                         metadata[key] = val
-
             # Clean and convert metadata types
             metadata = self._clean_and_convert_metadata(metadata)
 
@@ -111,6 +110,7 @@ class BSKTFile(FileReader):
             except Exception as e:
                 self.logger.error(f"Failed to parse holdings block: {e}")
                 holdings_df = pd.DataFrame()  # fallback to empty DataFrame
+
             funds.append({"metadata": metadata, "holdings": holdings_df})
         return funds
 
