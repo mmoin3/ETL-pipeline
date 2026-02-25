@@ -3,11 +3,10 @@ from pathlib import Path
 from typing import List, Dict, Any
 import logging
 from config import setup_logger
+import os, csv, io
 from config import LOG_FILE, LOG_LEVEL, NAV_METADATA_TYPE_MAP
 
 logger = logging.getLogger(__name__)
-
-def get_inav_data()
 
 class FileReader:
     """Simple file reader that detects type by extension and reads into a DataFrame.
