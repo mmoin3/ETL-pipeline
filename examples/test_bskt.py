@@ -4,17 +4,18 @@ import sys
 
 # ensure src is on path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+from services.bloomberg_tools import create_session, close_session, bdh, bdp
 
-from core.logger_config import DATA_DIR
-from parsers import BSKTFile
+from logger_config import DATA_DIR
+from src.parsers import inav_bskt
 
 
 def main():
     path = os.path.join(DATA_DIR, 'Harvest_INAVBSKT_ALL.20260218.CSV')
     path = os.path.abspath(path)
-    print('Testing BSKTFile on', path)
+    print('Testing inav_bskt on', path)
 
-    reader = BSKTFile(path)
+    reader = inav_bskt(path)
     blocks = reader.extract()
 
     print('Blocks found:', len(blocks))
@@ -35,5 +36,13 @@ def main():
     print(type(blocks[0]['metadata']['TRADE_DATE']))
     print(type(blocks[1]['metadata']['CREATION_UNIT_SIZE']))
 
+
+
 if __name__ == '__main__':
     main()
+    session = create_session()
+    try:
+        hist = bdh(session, ["XIU CN Equity"], ["PX_LAST"], "20260101", "20260220")
+        snap = bdp(session, ["XIU CN Equity"], ["PX_LAST", "VOLUME"])
+    finally:
+        close_session(session)
