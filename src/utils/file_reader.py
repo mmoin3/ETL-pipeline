@@ -1,7 +1,5 @@
 import os
-
 import pandas as pd
-
 
 class FileReader:
 	"""Reusable file reader with extension-based dispatch to pandas readers."""

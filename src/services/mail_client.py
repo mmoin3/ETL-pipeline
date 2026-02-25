@@ -11,8 +11,7 @@ from dotenv import load_dotenv
 load_dotenv()
 logger = logging.getLogger(__name__)
 
-
-def send_email(subject: str, body: str, to_email: str):
+def send_email(subject: str, body: str, to_email: str, smtp_server: str = "smtp.office365.com", smtp_port: int = 587):
     """
     Send an email via Outlook SMTP.
     
@@ -25,8 +24,8 @@ def send_email(subject: str, body: str, to_email: str):
         to_email: Recipient email address
     """
     # Get settings from .env
-    from_email = os.getenv("OUTLOOK_EMAIL")
-    password = os.getenv("OUTLOOK_APP_PASSWORD")  # This is the App Password
+    from_email = os.getenv("EMAIL_ADDRESS")
+    password = os.getenv("EMAIL_APP_PASSWORD")  # This is the App Password
     
     if not all([from_email, password]):
         logger.error("Missing Outlook credentials in .env")
@@ -37,10 +36,6 @@ def send_email(subject: str, body: str, to_email: str):
     msg['Subject'] = subject
     msg['From'] = from_email
     msg['To'] = to_email
-    
-    # Outlook SMTP settings
-    smtp_server = "smtp.office365.com"
-    smtp_port = 587
     
     # Send
     try:

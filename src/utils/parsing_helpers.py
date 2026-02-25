@@ -52,7 +52,6 @@ def convert_metadata_types(meta: Dict[str, str], type_map: Dict[str, object]) ->
 
     return cleaned
 
-
 def parse_holdings_csv(holdings_lines: List[str]) -> pd.DataFrame:
     """Parse holdings lines into a DataFrame using pandas CSV parser."""
     if not holdings_lines:

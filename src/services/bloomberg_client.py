@@ -20,7 +20,6 @@ class BloombergClient:
     def __init__(self, host: str = "localhost", port: int = 8194):
         """
         Initialize and start Bloomberg session.
-        
         Args:
             host: Bloomberg server host
             port: Bloomberg server port
