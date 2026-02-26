@@ -20,5 +20,4 @@ class FileReader:
 			return pd.read_table(self.path, **kwargs)
 		raise ValueError(f"Unsupported file type: {ext}")
 
-
 __all__ = ["FileReader"]

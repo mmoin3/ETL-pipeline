@@ -15,6 +15,8 @@ def send_email(subject: str,
                cc_emails: list[str] = None,
                bcc_emails: list[str] = None,
                attachments: list[str] = None,
+               from_email: str = os.getenv("EMAIL_ADDRESS"),
+               password: str = os.getenv("EMAIL_APP_PASSWORD"),
                smtp_server: str = "smtp.office365.com",
                smtp_port: int = 587):
     """
@@ -30,11 +32,11 @@ def send_email(subject: str,
         cc_emails: Optional list of CC recipient addresses
         bcc_emails: Optional list of BCC recipient addresses
         attachments: Optional list of file paths to attach
+        from_email: Sender email address (default from .env)
+        password: Email account password or app password (default from .env)
+        smtp_server: SMTP server address (default Outlook)
+        smtp_port: SMTP server port (default 587 for Outlook)
     """
-    # Get settings from .env
-    from_email = os.getenv("EMAIL_ADDRESS")
-    password = os.getenv("EMAIL_APP_PASSWORD")  # This is the App Password
-    
     if not all([from_email, password]):
         logger.error("Missing Outlook credentials in .env")
         return False

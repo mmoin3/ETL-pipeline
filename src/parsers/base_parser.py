@@ -1,4 +1,4 @@
-import io, os, logging
+import io, os, logging, csv
 import pandas as pd
 
 class BaseParser:
@@ -23,7 +23,8 @@ class BaseParser:
             return pd.read_json(self.path, lines=lines, **kwargs)
         if ext == ".txt":
             return pd.read_table(self.path, **kwargs)
-        else: self.logger.error(f"Unsupported file type: {ext}")
+        else:
+            self.logger.error(f"Unsupported file type: {ext}")
     
     def read_into_list(self) -> list[str]:
         """Read a text file and return logical lines without trailing newline chars."""
@@ -33,7 +34,6 @@ class BaseParser:
         except Exception as e:
             self.logger.error(f"Failed to read lines from {self.path}: {e}")
             return []
-    
   
     def list_to_dataframe(self, lines: list[str], **kwargs) -> pd.DataFrame:
         """Convert a list of lines to a pandas DataFrame. Log errors if logger is provided."""
@@ -46,12 +46,13 @@ class BaseParser:
         except Exception as e:
             self.logger.error(f"Failed to parse lines to DataFrame: {e}")
             return pd.DataFrame()
-
-    def get_blocks(self, lines: list[str], start_marker="TRADE_DATE") -> list[list[str]]:
-        """Split file into blocks based on lines that start with a marker.
-        """
+        
+    def list_to_blocks(self, lines: list[str], start_marker="TRADE_DATE") -> list[list[str]]:
+        """Split file into blocks based on lines that start with a marker. Logs errors if logger is provided."""
         try:
-            starts = [idx for idx, ln in enumerate(lines) if ln.strip().upper().startswith(start_marker)]
+            starts = [idx for idx, ln in enumerate(lines) if
+                      ln.strip().lstrip("'").upper().startswith(
+                          start_marker.strip().lstrip("'").upper())]
             blocks = []
             for idx, start in enumerate(starts):
                 if (idx + 1) < len(starts):
@@ -63,3 +64,10 @@ class BaseParser:
         except Exception as e:
             self.logger.error(f"Failed to get blocks: {e}")
             return []
+        
+    def get_header_idx(self, lines, header_marker) -> int:
+        """Find the first line that contains the header marker and return it as a list of column names.line could also be a pandas dataaframe header row"""
+        for idx, line in enumerate(lines):
+            if header_marker in line:
+                return idx
+    

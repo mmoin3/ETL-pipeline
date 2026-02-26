@@ -6,17 +6,14 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-
 class BloombergClient:
     """
     Bloomberg API client for data retrieval.
-    
     Example:
         client = BloombergClient()
         df = client.bdh(["AAPL US Equity"], ["PX_LAST"], "20240101", "20240131")
         client.close()
     """
-    
     def __init__(self, host: str = "localhost", port: int = 8194):
         """
         Initialize and start Bloomberg session.
