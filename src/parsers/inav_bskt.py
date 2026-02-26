@@ -1,5 +1,5 @@
 import pandas as pd
-from base_parser import BaseParser
+from .base_parser import BaseParser
 
 class INAVBskt(BaseParser):
     """Readable, minimal parser for BSKT-style files (single fund blocks).
@@ -10,17 +10,17 @@ class INAVBskt(BaseParser):
     includes 'CUSIP' or 'TICKER') and continues until the next TRADE_DATE
     or end of file.
     """
-    def extract(self) -> list[dict[str, pd.DataFrame]]:
+    def extract(self):
         """
         Return a list of fund dicts: {'metadata': {...}, 'holdings': DataFrame}.
         Accepts a list of lines (from CSV, Excel, etc.).
         If lines is None, reads from self.path as text lines (default CSV/txt).
         """
         try:
-            df0 = self.read_into_dataframe(header=None, index_col=False)
-            fund_blocks = self._get_blocks(df0, start_marker="TRADE_DATE")
+            table0 = pd.read_table(self.path, header=None)
+            fund_blocks =  self._get_blocks(table0, start_marker="TRADE_DATE")
 
-            funds_data:list[dict[str,pd.DataFrame]] = []
+            funds_data = []
             for block in fund_blocks:
                 holdings_df_header_idx = 8  # Default header row index for holdings table
                 metadata_df = self._extract_metadata(block.iloc[:holdings_df_header_idx])
@@ -33,29 +33,25 @@ class INAVBskt(BaseParser):
 
             return funds_data
         except Exception as e:
-            self.logger.error(f"Failed to extract data: {e}")
+            self.logger.error(f"Failed to extract data haha: {e}")
     
-    def _get_blocks(self, data: pd.DataFrame, start_marker: str) -> list[pd.DataFrame]:
-        """Split DataFrame into blocks where col0 equals start_marker."""
+    def _get_blocks(self, table:pd.DataFrame, start_marker:str="TRADE_DATE") -> list[pd.DataFrame]:
+        """Split DataFrame into blocks based on rows that start with a marker."""
         try:
-            marker = start_marker.strip().lstrip("'").upper()
-            col0 = data.iloc[:, 0].astype(str).str.strip().str.lstrip("'").str.upper()
-
-            starts = data.index[col0 == marker].tolist()
-            if not starts:
-                return []
-
+            starts = [i for i,v in enumerate(table.iloc[:,0]) if v.startswith(start_marker)]
             blocks = []
-            for i, s in enumerate(starts):
-                e = starts[i + 1] if i + 1 < len(starts) else len(data)
-                blocks.append(data.iloc[s:e].reset_index(drop=True))
+            for idx, start in enumerate(starts):
+                if (idx + 1) < len(starts):
+                    end = starts[idx + 1]
+                else:
+                    end = len(table)
+                blocks.append(table[start:end].reset_index(drop=True))
             return blocks
-
         except Exception as e:
-            self.logger.error(f"Failed to get blocks: {e}")
+            self.logger.error(f"Error splitting table into blocks: {e}")
             return []
-
-    def _extract_metadata(self, data_chunk: pd.DataFrame) -> pd.DataFrame:
+        
+    def _extract_metadata(self, data_chunk:list[list[str]]) -> pd.DataFrame:
         """Extract metadata from fixed-format top lines (no cleaning)."""
         metadata = {}
         first_fields = data_chunk.iloc[0].tolist()

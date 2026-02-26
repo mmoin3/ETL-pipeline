@@ -6,7 +6,7 @@ from config import setup_logger
 import os, csv, io
 from config import LOG_FILE, LOG_LEVEL, NAV_METADATA_TYPE_MAP
 
-logger = logging.getLogger(__name__)
+# logger = logging.getLogger(__name__)
 
 class FileReader:
     """Simple file reader that detects type by extension and reads into a DataFrame.
@@ -14,9 +14,9 @@ class FileReader:
     """
     def __init__(self, path: str):
         self.path = path
-        def __init__(self, path: str, logger=None):
+        def __init__(self, path: str, logger=logging.getLogger(__name__)):
             super().__init__(path)
-            self.logger = logger or setup_logger(log_file=LOG_FILE, level=LOG_LEVEL)
+            self.logger = logger
 
     def load_into_dataframe(self, **kwargs) -> pd.DataFrame:
         """Read file and return DataFrame. Detect type by extension and dispatch."""

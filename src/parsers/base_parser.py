@@ -25,15 +25,7 @@ class BaseParser:
             return pd.read_table(self.path, **kwargs)
         else:
             self.logger.error(f"Unsupported file type: {ext}")
-    
-    def read_into_list(self) -> list[str]:
-        """Read a text file and return logical lines without trailing newline chars."""
-        try:
-            with open(self.path, "r", encoding="utf-8-sig", newline="") as f:
-                return f.read().splitlines()
-        except Exception as e:
-            self.logger.error(f"Failed to read lines from {self.path}: {e}")
-            return []
+
   
     def list_to_dataframe(self, lines: list[str], **kwargs) -> pd.DataFrame:
         """Convert a list of lines to a pandas DataFrame. Log errors if logger is provided."""
