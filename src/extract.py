@@ -3,7 +3,7 @@ from pathlib import Path
 from typing import List, Dict, Any
 import logging
 import os, csv, io
-from config.
+from config.settings import *
 # from config import LOG_FILE, LOG_LEVEL, NAV_METADATA_TYPE_MAP
 
 # logger = logging.getLogger(__name__)
@@ -124,7 +124,7 @@ class BSKTFile(FileReader):
             return val is None or str(val).strip() in ('', ' ')
         cleaned = {}
         for k, v in meta.items():
-            typ = NAV_METADATA_TYPE_MAP.get(k, str)
+            typ = FUND_METADATA_TYPE_MAP.get(k, str)
             try:
                 if is_null(v):
                     cleaned[k] = None
