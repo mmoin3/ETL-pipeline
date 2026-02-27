@@ -1,6 +1,6 @@
 # Virtual environment and environment files
-venv/
 .venv/
+venv/
 .env
 
 #logs and databases
@@ -8,8 +8,10 @@ venv/
 *.sqlite
 *.log
 
+# Python cache and pytest cache
 __pycache__/
 *.pyc
-*.pyo
-*.pyd
+.pytest_cache/
+
+
 
