@@ -11,9 +11,11 @@ LOG_LEVEL = "INFO"
 # Example project paths
 DATA_DIR = os.path.join(PROJECT_ROOT, "data", "raw")
 
+NULL_LIKE_VALUES = ["", " ", "NA", "N/A", "NULL", "NONE", "-"]
+
 # Metadata type map for NAV/INAV files
-NAV_METADATA_TYPE_MAP = {
-    "TRADE_DATE": "datetime64[ns]",
+FUND_METADATA_TYPE_MAP = {
+    "TRADE_DATE": "datetime64[s]",
     "SS_LONG_CODE": str,
     "FULL_NAME": str,
     "TICKER": str,
@@ -49,4 +51,32 @@ NAV_METADATA_TYPE_MAP = {
     "ACTUAL_TOTAL_CASH": float,
     "ESTIMATED_TOTAL_CASH": float,
     "THRESHOLD": str,
+}
+
+FUND_HOLDINGS_TYPE_MAP = {
+    "CUSIP": str,
+    "TICKER": str,
+    "SEDOL": str,
+    "ISIN": str,
+    "DESCRIPTION": str,
+    "CUR": str,
+    "ISO": str,
+    "SHARES": int,
+    "ORIGINAL_FACE": int,
+    "INTEREST": float,
+    "LOCAL_PRICE": float,
+    "LOCAL_MV": float,
+    "FOREX": float,
+    "BASE_PRICE": float,
+    "BASE_MV": float,
+    "WEIGHT": float,
+    "CIL": str,
+    "EST_DIVIDEND": float,
+    "LOT": int,
+    "NEW": str,
+    "SHARE_CHANGE": int,
+    "INT_FACTOR": int,
+    "PAR_ADJUSTMENT_FACTOR": int,
+    "SUPPLEMENTAL_ID_1": int,
+    "SUPPLEMENTAL_ID_2": str,
 }
