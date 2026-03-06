@@ -8,6 +8,9 @@ version = "0.1.0"
 description = "ETL pipeline utilities and parsers"
 requires-python = ">=3.10"
 
+[tool.setuptools]
+py-modules = ["config"]
+
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["src*", "config*"]
+include = ["src*"]
