@@ -9,7 +9,10 @@ LOG_FILE = os.path.join(PROJECT_ROOT, "logs", "etl.log")
 LOG_LEVEL = "INFO"
 
 # Example project paths
-DATA_DIR = os.path.join(PROJECT_ROOT, "data", "0_raw data")
+RAW_DATA_DIR = os.path.join(PROJECT_ROOT, "data", "0_raw data")
+BRONZE_DIR = os.path.join(PROJECT_ROOT, "data", "1_bronze layer data")
+SILVER_DIR = os.path.join(PROJECT_ROOT, "data", "2_silver layer data")
+GOLD_DIR = os.path.join(PROJECT_ROOT, "data", "3_gold layer data")
 
 NULL_LIKE_VALUES = ["", " ", "NA", "N/A", "NULL", "NONE", "-"]
 

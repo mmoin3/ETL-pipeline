@@ -15,11 +15,11 @@ class INAVBskt(BaseParser):
     
     Context:
     - Files are generated at end of a trading session
-    - "Struck NAV" is the official NAV calculated shortly after market close
+    - "Struck NAV" is the official NAV calculated at ~market close in NYC
     - Holdings data represents fund positions at end of day, used for next day's creation/redemption 
       activity and next day's iNAV calculations
     """
-    def extract(self) -> list[dict[str, pd.DataFrame]]:
+    def extract(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         """
         Main extraction method for INAV/BSKT files. Reads lines, splits into fund blocks, extracts metadata and holdings.
         Returns two Dataframes per file: one for all funds primary data, and the other all funds holdings data.
@@ -41,8 +41,8 @@ class INAVBskt(BaseParser):
                     continue
                 metadata_df = self._extract_metadata(block[:header_idx])
                 holdings_df = self.rows_to_dataframe(block[header_idx:]).reset_index(drop=True)
-                holdings_df["TRADE_DATE"] = metadata_df.get("TRADE_DATE", pd.NA)
-                holdings_df["SS_LONG_CODE"] = metadata_df.get("SS_LONG_CODE", pd.NA)
+                holdings_df["TRADE_DATE"] = metadata_df["TRADE_DATE"].iloc[0]
+                holdings_df["SS_LONG_CODE"] = metadata_df["SS_LONG_CODE"].iloc[0]
 
                 fund_metrics = pd.concat([fund_metrics, metadata_df], ignore_index=True, sort=False)
                 fund_holdings = pd.concat([fund_holdings, holdings_df], ignore_index=True, sort=False)
@@ -58,13 +58,13 @@ class INAVBskt(BaseParser):
         first_row = chunk[0]
 
         metadata.update({
-            metadata[self.row_value(first_row, 0)]: self.row_value(first_row, 1),
+            "TRADE_DATE": self.row_value(first_row, 1),
             "SS_LONG_CODE": self.row_value(first_row, 2),
             "FULL_NAME": self.row_value(first_row, 4),
             "TICKER_1": self.row_value(first_row, 5),
             "TICKER_2": self.row_value(first_row, 6),
             "BASE_CURRENCY": self.row_value(first_row, 7),
-            metadata[self.row_value(first_row, 8)]: self.row_value(first_row, 9)
+            "INSTRUCTION_ASSET": self.row_value(first_row, 9)
         })
         metadata.update(self._pairs_to_dict(chunk[1:]))
         
