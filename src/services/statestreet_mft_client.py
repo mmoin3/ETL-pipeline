@@ -20,7 +20,7 @@ def login():
     session.cert = (MFT_CERT_PATH, MFT_KEY_PATH)
     
     r = session.post(
-        f"{MFT_URL}/auth/login",
+        MFT_URL,
         data={"username": MFT_USERNAME, "password": MFT_PASSWORD},
         timeout=10,
         verify=False

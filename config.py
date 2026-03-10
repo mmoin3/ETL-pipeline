@@ -22,10 +22,10 @@ DB_CONN_STR = "sqlite:///{DB_PATH}"
 load_dotenv()
 EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
 EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
-MFT_URL = os.getenv("MFT_URL")
 MFT_USERNAME = os.getenv("MFT_USERNAME")
 MFT_PASSWORD = os.getenv("MFT_PASSWORD")
 
+MFT_URL = "https://mft.statestreet.com/auth/login"
 MFT_CERT_PATH = str(ROOT_DIR / "certs" / "client.crt")
 MFT_KEY_PATH = str(ROOT_DIR / "certs" / "client.key")
 
