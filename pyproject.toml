@@ -7,6 +7,17 @@ name = "etl-pipeline"
 version = "0.1.0"
 description = "ETL pipeline utilities and parsers"
 requires-python = ">=3.10"
+dependencies = [
+    "pandas==3.0.1",
+    "numpy==2.4.2",
+    "SQLAlchemy==2.0.48",
+    "python-dotenv==1.2.2",
+    "colorama==0.4.6",
+    "pytest==9.0.2",
+    "jupyter==1.1.1",
+    "ipython==9.10.0",
+    "matplotlib-inline==0.2.1",
+]
 
 [tool.setuptools]
 py-modules = ["config"]
@@ -14,3 +25,8 @@ py-modules = ["config"]
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["src*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+addopts = "-v"

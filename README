@@ -1,36 +1,75 @@
-# Daily ETL Pipeline
+# FundOperations ETL Pipeline
 
-## Overview
-This pipeline automates the daily data workflow: extracting data from 10+ source files, cleaning, transforming, and loading into PostgreSQL for analysis.
+Extract, Transform, Load (ETL). This pipeline collects data from various sources and inserts them into Harvest's FundOperations Database.
+The Database enforces strict data type casting, and validates entries before insertion.
 
-## Quick Start
+---
+## Data Architecture
 
-### Prerequisites
+The data architecture for this project follows the medallion architecture framework: **Bronze**, **Silver**, **Gold** layers:
+![Data Architecture](docs/DB_Architecture_FundOperations-pipeline%20rules.drawio.png)
+
+1. **Bronze Layer**: Tabularizes source data with minimal transformations. Meant to show data as came from source. Holds full history.
+2. **Silver Layer**: Takes data from bronze layer, cleans, transforms, and validates the entries and updates. Serves as the source of truth.
+3. **Gold Layer**: Serves as a highly aggregated view of Silver layer. Different tables serve different reporting needs. Data for analysis only.
+
+---
+## Prerequisites
 - Python 3.10+
-- PostgreSQL 15+
 - 8GB RAM recommended
+- Basic git commands knowledge
 
-### Installation
+## Installation
+
+### Clone and Setup
 ```bash
 # Clone repo
 git clone https://github.com/mmoin3/ETL-pipeline.git
 
 # Set up virtual environment
-python -m venv .venv
-
-# Activate
-# macOS/Linux:
-source .venv/bin/activate
-# Windows PowerShell:
-.\.venv\Scripts\Activate.ps1
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set up environment
-cp .env.example .env
-# Edit .env with your database credentials
+python -m venv myvenv
 ```
+
+### Activate Virtual Environment
+
+<details>
+<summary><b>macOS/Linux</b></summary>
+
+```bash
+source myvenv/bin/activate
+```
+</details>
+
+<details>
+<summary><b>Windows PowerShell</b></summary>
+
+```powershell
+& .\myvenv\Scripts\Activate.ps1
+```
+</details>
+
+### Install Dependencies
+
+```bash
+pip install -e .
+```
+
+### Environment Setup
+
+```bash
+# Set up environment (create .env with your database credentials)
+# cp .env.example .env  # if .env.example exists
+```
+
+### Optional: Bloomberg API Setup
+
+> **Note:** `blpapi` (Bloomberg API) must be installed separately as it's proprietary software and not available via pip. This is required only to use Bloomberg Tools.
+
+```powershell
+python -m pip install --index-url=https://blpapi.bloomberg.com/repository/releases/python/simple/ blpapi
+```
+
+This is required to use the `BloombergClient` for data extraction via BDH and BDP functions.
 
 ## Bloomberg Tools (Simple)
 
@@ -45,11 +84,7 @@ with BloombergClient() as client:
 ## Running Tests & Imports (Windows)
 
 When tests are run from subfolders, Python may fail to resolve `src` imports.
-Use a one-time editable install and run tests from the project root.
-
-```powershell
-python -m pip install -e .
-```
+Ensure you've installed the project with `pip install -e .` and run tests from the project root.
 
 ```powershell
 python -m unittest discover -s tests -p "test_clean.py" -v

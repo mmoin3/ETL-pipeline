@@ -22,7 +22,6 @@ class INAVBskt(BaseParser):
     - Holdings data represents fund positions at end of day, used for next day's
       creation/redemption activity and next day's iNAV calculations.
     """
-    
     def extract(self) -> tuple[pd.DataFrame, pd.DataFrame]:
         try:
             parsed_rows = self.read_rows()

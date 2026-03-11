@@ -1,5 +1,5 @@
 #======================================================================
-# Configuration file for ETL pipeline. Contains constants, file paths, and settings.
+# Configuration file for ETL pipeline. Contains constants,maps, file paths, and settings.
 # Serves as a single source of truth for configuration values used across the project.
 #======================================================================
 

@@ -57,7 +57,7 @@ class DataFrameCleaner:
             return s_clean.astype("string")
         
         # Try numeric
-        numeric = pd.to_numeric(s.astype(str).str.strip().replace(NULL_LIKE_VALUES, pd.NA).str.replace(",", "", regex=False).str.replace("$", "", regex=False).str.replace("%", "", regex=False), errors="coerce")
+        numeric = pd.to_numeric(s_clean.str.replace(",", "", regex=False).str.replace("$", "", regex=False).str.replace("%", "", regex=False), errors="coerce")
         if numeric[valid.index].notna().all():
             return numeric.round().astype("Int64") if ((numeric.dropna() % 1) == 0).all() else numeric
         
