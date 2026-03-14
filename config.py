@@ -1,8 +1,3 @@
-#======================================================================
-# Configuration file for ETL pipeline. Contains constants,maps, file paths, and settings.
-# Serves as a single source of truth for configuration values used across the project.
-#======================================================================
-
 import os, sys
 import logging
 from pathlib import Path
@@ -10,29 +5,35 @@ from dotenv import load_dotenv
 
 # Save Important paths as constants
 ROOT_DIR = Path(__file__).parent
-RAW_DATA_DIR = os.path.join(ROOT_DIR, "data", "raw")
-PROCESSED_DATA_DIR = os.path.join(ROOT_DIR, "data", "processed")
-ARCHIVED_DATA_DIR = os.path.join(ROOT_DIR, "data", "archived")
-
-# Define Database connection strings
-DB_PATH = os.path.join(ROOT_DIR, "FundOperations.db")
-DB_CONN_STR = "sqlite:///{DB_PATH}"
+RAW_DATA_DIR = os.path.join(ROOT_DIR, "0_raw data")
+CLEANED_DATA_DIR = os.path.join(ROOT_DIR, "cleaned_data")
+ARCHIVE_DIR = os.path.join(ROOT_DIR, "archive")
 
 # Load .env variables
 load_dotenv()
-EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
-EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
+MFT_URL = os.getenv("MFT_URL")
 MFT_USERNAME = os.getenv("MFT_USERNAME")
 MFT_PASSWORD = os.getenv("MFT_PASSWORD")
-
-MFT_URL = "https://mft.statestreet.com/auth/login"
 MFT_CERT_PATH = str(ROOT_DIR / "certs" / "client.crt")
 MFT_KEY_PATH = str(ROOT_DIR / "certs" / "client.key")
 
+EMAIL_ADDRESS = os.getenv("EMAIL_ADDRESS")
+EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
 
 # Logger settings
 LOG_FILE = os.path.join(ROOT_DIR, "logs", "etl.log")
 LOG_LEVEL = "INFO"
+
+# Project paths
+RAW_DATA_DIR = os.path.join(ROOT_DIR, "data", "0_raw data")
+BRONZE_DIR = os.path.join(ROOT_DIR, "data", "1_bronze layer data")
+SILVER_DIR = os.path.join(ROOT_DIR, "data", "2_silver layer data")
+GOLD_DIR = os.path.join(ROOT_DIR, "data", "3_gold layer data")
+
+#=========================================================
+# Below is a list of constants and mappings used across the project
+# for typecasting, and handling null-like values in the data.
+#=========================================================
 
 NULL_LIKE_VALUES = ["", " ", "NA", "N/A", "NULL", "NONE", "-"]
 
@@ -48,9 +49,9 @@ BOOLEAN_MAP = {
 }
 
 # Metadata type map for NAV/INAV files
-FUND_METRICS_TYPE_MAP = {
-    "TRADE_DATE": "datetime64[ns]",
+FUND_METADATA_TYPE_MAP = {
     "SS_LONG_CODE": str,
+    "TRADE_DATE": "datetime64[ns]",
     "FULL_NAME": str,
     "TICKER": str,
     "BASE_CURRENCY": str,
@@ -88,8 +89,6 @@ FUND_METRICS_TYPE_MAP = {
 }
 
 FUND_HOLDINGS_TYPE_MAP = {
-    "TRADE_DATE": "datetime64[ns]",
-    "SS_LONG_CODE": str,
     "CUSIP": str,
     "TICKER": str,
     "SEDOL": str,
