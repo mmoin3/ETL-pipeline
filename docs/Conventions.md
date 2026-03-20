@@ -4,14 +4,15 @@
 
 ### Naming
 
-| Element | Convention | Example |
+| Element | Convention | Example(s) |
 |---|---|---|
-| **Classes** | PascalCase | `DataFrameCleaner`, `INAVBskt`, `Extractor` |
-| **Public Methods** | snake_case | `extract(self)`, `load_to_bronze(self)`, `clean_data(self)` |
-| **Private Methods** | snake_case with leading underscore | `_parse_dates(self)`, `_clean_str(self)` |
-| **Public Attributes** | snake_case | `self.schema`, `self.file_path` |
-| **Private Attributes** | snake_case with leading underscore | `self._raw_files`, `self._file_path` |
-| **Constants** | UPPER_SNAKE_CASE | `NULL_LIKE_VALUES`, `DB_PATH` |
+| **Project Name** | kebab-case usually singular| `myproject`,`data-pipeline` |
+| **Folder Names** | snake_case usually plural| `parsers`, `external_services` |
+| **File Names** | snake_case usually singular | `dataframe_cleaner.py`, `statestreet_mft_client.py` |
+| **Classes** | PascalCase based on file name. Limit one class to one file | `DataframeCleaner`, `StatestreetMFTClient` |
+| **Functions or Class Methods** | snake_case with leading underscore for private methods| `my_func()`, `self.public_method()`,`self._private_method()`|
+| **Variables or Class Attributes** | snake_case with leading underscore for private attributes| `my_var`, `self.public_attribute`,`self._private_attribute` |
+| **Constants** | UPPER_SNAKE_CASE | `MY_CONSTANT` |
 
 ### Class Structure
 
@@ -21,22 +22,28 @@ class MyExtractor:
     
     def __init__(self):
         """Initialize instance attributes."""
-        self._engine = create_engine(DB_CONN_STR)
-        self.raw_dir = Path(RAW_DATA_DIR)
+        self.file_path = Path(RAW_DATA_DIR)
     
-    def public_method(self):
+    def __enter__(self):
+        """Context manager entry."""
+        return self
+    
+    def public_method(self) -> pd.DataFrame:
         """Public API method."""
-        self._helper_method()
-        pass
+        return self._helper_method()
     
     def _helper_method(self):
         """Private helper method."""
         pass
+    
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        """Context manager exit."""
+        return False
 ```
 
 ### Function Documentation
 
-Every function must have a docstring:
+Every function must have a docstring with Args (no Returns):
 
 ```python
 def extract(self, file_path: Path) -> pd.DataFrame:
@@ -50,6 +57,56 @@ def extract(self, file_path: Path) -> pd.DataFrame:
 
 ---
 
+## Data Architecture
+
+### Bronze Layer (Landing Zone)
+
+Bronze is a **file storage layer** with no schema enforcement. Files are stored locally (currently) with plans to migrate to Azure Data Lake.
+
+```
+bronze/
+  ├── raw/            ← New files land here
+  ├── processed/      ← Successfully validated files
+  └── quarantined/    ← Files that failed validation
+```
+
+### Silver Layer (Transformation & Curation)
+
+Silver is where all **data transformation, validation, and schema enforcement** occurs.
+
+**Responsibilities:**
+- Type enforcement and validation
+- Deduplication and aggregation
+- Data quality checks
+- Reference key linking
+- Audit metadata
+
+```sql
+OperationsDB
+  └── silver
+      ├── fund_metrics
+      ├── fund_holdings
+      ├── mft_trades
+      ├── ref_funds              ← Reference/lookup tables
+      ├── ref_securities
+      ├── ref_currencies
+      └── ref_asset_classes
+```
+
+### Gold Layer (Business Logic)
+
+Gold contains **aggregated, business-ready metrics** for reporting and analytics.
+
+```sql
+OperationsDB
+  └── gold
+      ├── daily_nav
+      ├── fund_performance
+      └── portfolio_composition
+```
+
+---
+
 ## Database Conventions
 
 ### Database Naming
@@ -57,32 +114,7 @@ def extract(self, file_path: Path) -> pd.DataFrame:
 Use **PascalCase** for database names:
 
 ```sql
-FundOperations        -- Fund operations data
-HarvestStoreDB        -- Bloomberg/market data
-ReportsDB             -- Reporting layer
-```
-
-### Schema Organization
-
-```
-OperationsDB (database)
-  ├── bronze                         ← raw ingestion layer
-  │   ├── fund_metrics
-  │   ├── fund_holdings
-  │   └── mft_trades
-  │
-  ├── silver                         ← cleaned & enriched layer
-  │   ├── fund_metrics_clean
-  │   ├── fund_holdings_enriched
-  │   ├── ref_funds                  ← reference/lookup tables
-  │   ├── ref_securities
-  │   ├── ref_currencies
-  │   └── ref_asset_classes
-  │
-  └── gold                           ← business logic & aggregations
-      ├── daily_nav
-      ├── fund_performance
-      └── portfolio_composition
+OperationsDB          -- Fund operations data
 ```
 
 ### Table Naming
@@ -91,22 +123,18 @@ Use **snake_case_plural** for table names:
 
 **Transactional Tables:**
 ```sql
-bronze.fund_metrics
-bronze.fund_holdings
-bronze.mft_trades
-silver.fund_metrics_clean
-silver.fund_holdings_enriched
+silver.fund_metrics
+silver.fund_holdings
+silver.mft_trades
 gold.daily_nav
-gold.fund_performance
 ```
 
-**Reference Tables** (use `ref_` prefix in silver schema):
+**Reference Tables** (use `ref_` prefix):
 ```sql
-silver.ref_funds              -- Master fund list
-silver.ref_securities         -- Security master (tickers, ISINs, etc)
-silver.ref_currencies         -- Currency codes
-silver.ref_asset_classes      -- Asset classification
-silver.ref_counterparties     -- Counterparty master
+silver.ref_funds
+silver.ref_securities
+silver.ref_currencies
+silver.ref_asset_classes
 ```
 
 ### Column Naming
@@ -114,101 +142,36 @@ silver.ref_counterparties     -- Counterparty master
 Use **snake_case_singular** for column names:
 
 ```sql
-CREATE TABLE bronze.fund_metrics (
-    fund_metric_id INT PRIMARY KEY,         -- Singular (fund_metric not fund_metrics)
-    fund_name VARCHAR(255),
-    nav_value DECIMAL(18, 2),
+CREATE TABLE silver.fund_metrics (
+    fund_metric_id INT PRIMARY KEY,
+    fund_name VARCHAR(255) NOT NULL,
+    net_asset_value DECIMAL(18, 2),
     as_of_date DATE,
-    file_name VARCHAR(255),
-    loaded_at DATETIME
+    share_count INT,
+    _sourced_from VARCHAR(255),
+    _loaded_at DATETIME,
+    _updated_at DATETIME
 );
 ```
 
 ### Primary Key Convention
 
-- Primary key(s) **always end with `_id`**
-- Format: `{table_name_singular}_id` (use singular form of table name)
-- Examples:
-  - `fund_metric_id` (table: `bronze.fund_metrics`)
-  - `trade_id` (table: `bronze.trades`)
-  - `holding_id` (table: `silver.holdings_enriched`)
-  - `fund_id` (table: `silver.ref_funds`)
+- Format: `{table_name_singular}_id`
+- Examples: `fund_metric_id`, `trade_id`, `holding_id`, `fund_id`
 
 ### Foreign Key Convention
 
-- Foreign keys reference the primary key by name
-- Examples:
-  - `fund_metric_id` → references `bronze.fund_metrics(fund_metric_id)`
-  - `fund_holding_id` → references `bronze.fund_holdings(fund_holding_id)`
-  - `fund_id` → references `silver.ref_funds(fund_id)`
-
-### Reference Table Structure
-
-Reference tables in silver layer act as master/dimension tables:
-
-```sql
-CREATE TABLE silver.ref_funds (
-    fund_id INT PRIMARY KEY,
-    fund_code VARCHAR(10) UNIQUE NOT NULL,
-    fund_name VARCHAR(255) NOT NULL,
-    fund_type VARCHAR(50),
-    inception_date DATE,
-    is_active BIT DEFAULT 1,
-    loaded_at DATETIME
-);
-
-CREATE TABLE silver.ref_securities (
-    security_id INT PRIMARY KEY,
-    ticker VARCHAR(20),
-    isin VARCHAR(12) UNIQUE,
-    security_name VARCHAR(255),
-    asset_class_id INT,
-    loaded_at DATETIME,
-    CONSTRAINT fk_ref_securities_asset_class 
-        FOREIGN KEY (asset_class_id) 
-        REFERENCES silver.ref_asset_classes(asset_class_id)
-);
-```
+- Foreign keys match their primary key names
+- Example: `fund_id` → references `silver.ref_funds(fund_id)`
 
 ### Metadata Columns
 
-**Bronze Layer** (raw ingestion):
-```sql
-file_name VARCHAR(255)            -- Name of source file
-loaded_at DATETIME                -- When data was loaded
-```
-
-**Silver Layer** (cleaned & enriched):
-```sql
-file_name VARCHAR(255)            -- Original source file
-loaded_at DATETIME                -- When transformation occurred
-```
-
-**Silver Reference Tables** (optional):
-```sql
-loaded_at DATETIME                -- When reference was last updated
-```
-
-**Gold Layer** (optional):
-```sql
-loaded_at DATETIME                -- When metric was last calculated
-```
-
-### Using Reference Tables
-
-Gold layer queries **join with silver reference tables**:
+Metadata columns use a **leading underscore** to denote system/audit columns:
 
 ```sql
-SELECT 
-    g.daily_nav_id,
-    f.fund_name,
-    s.security_name,
-    g.nav_value,
-    g.loaded_at
-FROM gold.daily_navs g
-JOIN silver.ref_funds f ON g.fund_id = f.fund_id
-JOIN silver.ref_securities s ON g.security_id = s.security_id
-WHERE g.loaded_at >= DATEADD(DAY, -30, GETDATE());
+_sourced_from VARCHAR(255)    -- Original source file
+_loaded_at DATETIME           -- When data entered transformation
+_updated_at DATETIME          -- When record was last modified
 ```
 
 ---
@@ -217,16 +180,13 @@ WHERE g.loaded_at >= DATEADD(DAY, -30, GETDATE());
 
 | Item | Convention | Example |
 |---|---|---|
-| Class | PascalCase | `DataFrameCleaner` |
-| Function | snake_case | `extract_data()` |
-| Helper method | _snake_case | `_parse_dates()` |
-| Constant | UPPER_SNAKE_CASE | `NULL_LIKE_VALUES` |
-| Variable | snake_case | `raw_files` |
-| Database | PascalCase | `FundOperations` |
-| Transactional Table | snake_case_plural | `fund_metrics` |
+| Class | PascalCase | `StateStreetMFTClient` |
+| Public Method | snake_case | `download()` |
+| Private Method | _snake_case | `_login()` |
+| Constant | UPPER_SNAKE_CASE | `RAW_DATA_DIR` |
+| Database | PascalCase | `OperationsDB` |
+| Table | snake_case_plural | `fund_metrics` |
 | Reference Table | ref_snake_case_plural | `ref_funds` |
-| Column | snake_case_singular | `fund_name` |
-| Primary Key | *_id (singular) | `fund_metric_id` |
-| Foreign Key | *_id (matches PK) | `fund_id` |
-| Metadata (Bronze) | file_name, loaded_at | — |
-| Metadata (Silver) | file_name, loaded_at | — |
+| Column | snake_case_singular | `share_count` |
+| Primary Key | *_id | `fund_metric_id` |
+| Metadata | _snake_case | `_sourced_from` |

@@ -8,12 +8,13 @@ class DataFrameCleaner:
         """Clean a DataFrame. Schema columns get cast, string/object columns get cleaned, rest left as-is."""
         if not isinstance(df, pd.DataFrame):
             if isinstance(df, list):
+                # If it's a list of DataFrames, concatenate them. Otherwise, try to make a DataFrame from it.
                 df = pd.concat(df, ignore_index=True) if df and all(isinstance(x, pd.DataFrame) for x in df) else pd.DataFrame(df)
             else:
                 df = pd.DataFrame(df)
-
-        schema = schema or {}
-
+        # Ensure columns are lowercase, underscored, stripped strings for consistent processing.
+        # This also ensures column names are strings, which is important for the rest of the cleaning logic.
+        df.columns = df.columns.astype(str).str.strip().str.lower().str.replace(r"[\-]","_",regex=True)
         for col in df.columns:
             if col in schema:
                 df[col] = self.cast(df[col], schema[col])
