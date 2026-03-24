@@ -143,14 +143,24 @@ Use **snake_case_singular** for column names:
 
 ```sql
 CREATE TABLE silver.fund_metrics (
-    fund_metric_id INT PRIMARY KEY,
-    fund_name VARCHAR(255) NOT NULL,
-    net_asset_value DECIMAL(18, 2),
-    as_of_date DATE,
-    share_count INT,
-    _sourced_from VARCHAR(255),
-    _loaded_at DATETIME,
-    _updated_at DATETIME
+    -- Primary Key
+    fund_metric_id UUID PRIMARY KEY,
+    
+    -- Business Keys
+    fund_id VARCHAR NOT NULL,
+    as_of_date DATE NOT NULL,
+    
+    -- Data Columns
+    fund_name VARCHAR(255),
+    nav_per_share DECIMAL(18, 8),
+    total_nav DECIMAL(18, 2),
+    shares_outstanding DECIMAL(18, 2),
+    currency VARCHAR(3),
+    
+    -- Metadata / Audit Columns
+    _sourced_from VARCHAR(255),        -- e.g., 'Daily_Net_Asset_Values.CSV'
+    _created_at TIMESTAMP,             -- When loaded into silver
+    _updated_at TIMESTAMP              -- Last modification time
 );
 ```
 
@@ -166,20 +176,24 @@ CREATE TABLE silver.fund_metrics (
 
 ### Metadata Columns
 
-Metadata columns use a **leading underscore** to denote system/audit columns:
+Metadata columns use a **leading underscore** to denote system/audit columns. These are **read-only audit/lineage fields** that track data provenance and lifecycle, NOT calculated metrics.
 
 ```sql
-_sourced_from VARCHAR(255)    -- Original source file
-_loaded_at DATETIME           -- When data entered transformation
-_updated_at DATETIME          -- When record was last modified
+-- Every table in silver and gold layers includes:
+_sourced_from VARCHAR(255)     -- Original source file name or system
+_created_at TIMESTAMP          -- When record was first loaded into silver layer
+_updated_at TIMESTAMP          -- When record was last modified (for SCD Type 2 tracking)
 ```
+
+**Important:** Metadata columns are for audit trails, lineage tracking, and compliance. Do NOT use them for analytical calculations. For business metrics, create separate calculated columns or use the gold layer.
 
 ---
 
 ## Summary Table
 
 | Item | Convention | Example |
-|---|---|---|
+|---|---|--Column | _snake_case | `_sourced_from`, `_created_at`, `_updated_at` |
+| Audit Metadata | Purpose: lineage & compliance tracking | NOT for analytical calculations
 | Class | PascalCase | `StateStreetMFTClient` |
 | Public Method | snake_case | `download()` |
 | Private Method | _snake_case | `_login()` |

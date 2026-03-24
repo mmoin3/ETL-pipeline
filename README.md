@@ -1,30 +1,30 @@
-# FundOperations ETL Pipeline
+# FundOperations data Pipeline
 
 Extract, Transform, Load (ETL). This pipeline collects data from various sources and inserts them into Harvest's FundOperations Database.
-The Database enforces strict data type casting, and validates entries before insertion.
+The Database enforces strict datatype casting, and validates entries before insertion.
 
 ---
 ## Data Architecture
 
 The data architecture for this project follows the medallion architecture framework: **Bronze**, **Silver**, **Gold** layers:
-![Data Architecture](docs/DB_Architecture_FundOperations-pipeline%20rules.drawio.png)
+![Data Architecture](docs/warehouse_architecture.drawio.png)
 
-1. **Bronze Layer**: Tabularizes source data with minimal transformations. Meant to show data as came from source. Holds full history.
-2. **Silver Layer**: Takes data from bronze layer, cleans, transforms, and validates the entries and updates. Serves as the source of truth.
+1. **Bronze Layer**: Holds source data in raw form. Meant to show data as it came from source. Holds full history.
+2. **Silver Layer**: Takes data from bronze layer, cleans, transforms, and validates the entries and before inserting into silver layer database. schema is enforced here.
 3. **Gold Layer**: Serves as a highly aggregated view of Silver layer. Different tables serve different reporting needs. Data for analysis only.
 
 ---
 ## Prerequisites
 - Python 3.10+
 - 8GB RAM recommended
-- Basic git commands knowledge
+- Knowledge of basic git commands
 
 ## Installation
 
 ### Clone and Setup
 ```bash
 # Clone repo
-git clone https://github.com/mmoin3/ETL-pipeline.git
+git clone https://github.com/mmoin3/data-pipeline.git
 
 # Set up virtual environment
 python -m venv myvenv
@@ -51,7 +51,7 @@ source myvenv/bin/activate
 ### Install Dependencies
 
 ```bash
-pip install -e .
+pip install -r requirements.txt
 ```
 
 ### Environment Setup
@@ -82,19 +82,13 @@ with BloombergClient() as client:
     snap = client.BDP(["XIU CN Equity"], ["PX_LAST", "VOLUME"])
 ```
 
-## Running Tests & Imports (Windows)
+---
+## Documentation & Standards
+The config.py file in the root directory is the source of truth for the entire project. Unique values are rarely hardcoded in individual scripts.
 
-When tests are run from subfolders, Python may fail to resolve `src` imports.
-Ensure you've installed the project with `pip install -e .` and run tests from the project root.
+For detailed project conventions, naming standards, data architecture specifications, and development practices, see the [`docs/`](docs/) directory:
 
-```powershell
-python -m unittest discover -s tests -p "test_clean.py" -v
-```
+- [**conventions.md**](docs/conventions.md) — Python code conventions, database naming standards, table/column structure, metadata columns
+- Other documentation as applicable
 
-```powershell
-pytest
-```
-
-Notes:
-- Avoid running `cd tests` then `python test_clean.py`.
-- Keep test imports as `from src.dataframe_cleaner import DataFrameCleaner`.
+Refer to these documents for contributions and architectural decisions.

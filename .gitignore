@@ -1,7 +1,4 @@
 # Virtual environment and environment files
-.env
-.env.local
-.env.*.local
 .venv/
 venv/
 env/
