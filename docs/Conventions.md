@@ -43,7 +43,7 @@ class MyExtractor:
 
 ### Function Documentation
 
-Every function must have a docstring with Args (no Returns):
+Every function must have a docstring with Args:
 
 ```python
 def extract(self, file_path: Path) -> pd.DataFrame:
@@ -61,7 +61,7 @@ def extract(self, file_path: Path) -> pd.DataFrame:
 
 ### Bronze Layer (Landing Zone)
 
-Bronze is a **file storage layer** with no schema enforcement. Files are stored locally (currently) with plans to migrate to Azure Data Lake.
+Bronze is a **file storage layer** with no schema enforcement. Files are stored locally (currently) with plans to migrate to an Azure Data Lake.
 
 ```
 bronze/
@@ -126,7 +126,7 @@ Use **snake_case_plural** for table names:
 silver.fund_metrics
 silver.fund_holdings
 silver.mft_trades
-gold.daily_nav
+gold.daily_navs
 ```
 
 **Reference Tables** (use `ref_` prefix):
@@ -192,7 +192,8 @@ _updated_at TIMESTAMP          -- When record was last modified (for SCD Type 2 
 ## Summary Table
 
 | Item | Convention | Example |
-|---|---|--Column | _snake_case | `_sourced_from`, `_created_at`, `_updated_at` |
+|---|---|---|
+| Column | _snake_case | `_sourced_from`, `_created_at`, `_updated_at` |
 | Audit Metadata | Purpose: lineage & compliance tracking | NOT for analytical calculations
 | Class | PascalCase | `StateStreetMFTClient` |
 | Public Method | snake_case | `download()` |

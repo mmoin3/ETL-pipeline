@@ -9,13 +9,6 @@ import urllib
 
 # Load environment variables from .env file
 load_dotenv()
-
-# Lazy import parsers to avoid circular imports
-def get_parsers():
-    from src.parsers.base_parser import BaseParser
-    from src.parsers.inav_bskt import INAVBskt
-    return {"BaseParser": BaseParser, "INAVBskt": INAVBskt}
-
 # ===== Directory Paths =====
 ROOT_DIR = Path(__file__).resolve().parent
 RAW_DATA_DIR = ROOT_DIR / "data" / "raw"
@@ -51,8 +44,8 @@ EMAIL_APP_PASSWORD = os.getenv("EMAIL_APP_PASSWORD")
 MFT_BASE_URL = os.getenv("MFT_BASE_URL")
 MFT_USERNAME = os.getenv("MFT_USERNAME")
 MFT_PASSWORD = os.getenv("MFT_PASSWORD")
-MFT_CERT_PATH = os.getenv("MFT_CERT_PATH")
-MFT_KEY_PATH = os.getenv("MFT_KEY_PATH")
+MFT_CERT_PATH = ROOT_DIR.parent/"mmoinclient.crt"
+MFT_KEY_PATH = ROOT_DIR.parent/"mmoinclient.key"
 
 # ===== Data Cleaning & Type Mapping =====
 NULL_LIKE_VALUES = ["", " ", "NA", "NAN", "N/A", "NULL", "NONE", "-"]

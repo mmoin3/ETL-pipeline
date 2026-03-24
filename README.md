@@ -64,7 +64,7 @@ pip install -r requirements.txt
 
 ### Optional: Bloomberg API Setup
 
-> **Note:** `blpapi` (Bloomberg API) must be installed separately as it's proprietary software and not available via pip. This is required only to use Bloomberg Tools.
+> **Note:** `blpapi` (Bloomberg API) must be installed separately as it's proprietary software. This is required only to use Bloomberg Tools.
 
 ```powershell
 python -m pip install --index-url=https://blpapi.bloomberg.com/repository/releases/python/simple/ blpapi

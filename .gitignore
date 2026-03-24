@@ -19,8 +19,8 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 
-etl_pipeline.egg-info/
+*.egg-info/
 
-# Bronze Layer Data
+# Data
 data/
 
