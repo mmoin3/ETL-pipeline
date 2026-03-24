@@ -2,6 +2,7 @@
 .venv/
 venv/
 env/
+.env
 myvenv/
 
 # Re-include an example file
