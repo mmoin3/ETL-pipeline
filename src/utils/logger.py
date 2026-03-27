@@ -1,7 +1,8 @@
 import logging
 from pathlib import Path
 
-LOG_PATH = Path(__file__).parent.parent.parent / "logs" / "pipeline.log"
+LOG_PATH = Path(__file__).resolve().parent.parent.parent / \
+    "logs" / "pipeline.log"
 
 
 def get_logger(name: str) -> logging.Logger:

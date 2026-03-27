@@ -1,25 +1,32 @@
 import pandas as pd
 import deltalake
 from pathlib import Path
-from config import BRONZE_DIR
+from config import INGESTION_MAPPINGS
+from src.parsers.base_parser import BaseParser
+from src.parsers.baskets_parser import BasketsParser
+from src.utils.logger import get_logger
+
+PARSERS_MAP = {
+    "BaseParser": BaseParser,
+    "BasketsParser": BasketsParser
+}
+
+logger = get_logger(__name__)
 
 
-def write_to_bronze(df: pd.DataFrame, target_table: str, load_type: str, file_path: Path) -> None:
+def ingest_into_bronze(df: pd.DataFrame, bronze_path: Path, load_type: str) -> None:
     """Write DataFrame to Bronze layer as Delta Lake table.
 
     Args:
         df: DataFrame to write.
-        target_table: Target table name (creates subdirectory in bronze/).
-        load_type: "append" or "replace" mode.
-        file_path: Source file path for tracking.
+        bronze_path: Target delta table path in bronze layer.
+        load_type: delta lake write mode, either "append" or "replace".
     """
-    # Add tracking columns
-    df["_source_file"] = file_path.name
-    df["_load_type"] = load_type
-    df["_ingested_at"] = pd.Timestamp.now(tz="US/Eastern")
+    # df["_source_file"] = file_path.name
+    # df["_load_type"] = load_type
+    # df["_ingested_at"] = pd.Timestamp.now(tz="US/Eastern")
 
     # Determine target path and write mode
-    bronze_path = BRONZE_DIR / target_table
     bronze_path.mkdir(parents=True, exist_ok=True)
 
     # Write using deltalake
@@ -27,3 +34,18 @@ def write_to_bronze(df: pd.DataFrame, target_table: str, load_type: str, file_pa
         deltalake.write_deltalake(str(bronze_path), df, mode="overwrite")
     else:  # append
         deltalake.write_deltalake(str(bronze_path), df, mode="append")
+
+
+def ingest_into_bronze(file_path: Path, parsed_data: dict) -> None:
+    """Load parsed data to Bronze layer."""
+    mapping = _get_file_mapping(file_path)
+
+    for df_key, target_table in mapping["outputs"].items():
+        if df_key not in parsed_data:
+            raise ValueError(
+                f"Expected key '{df_key}' not found in parsed data for {file_path.name}")
+
+        df = parsed_data[df_key]
+        load_type = mapping["load_type"]
+        destination_path = target_table
+        ingest_into_bronze(df, destination_path, load_type)
