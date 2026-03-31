@@ -1,134 +1,127 @@
 """
 Main entry point: Configure and run the ingestion pipeline.
-Orchestrates file discovery, parsing, and loading through Bronze -> Silver -> Gold layers.
+Orchestrates file discovery, parsing, and loading to Bronze layer.
+Silver and Gold transformations handled separately in DuckDB.
 """
-from pathlib import Path
-import pandas as pd
 from datetime import datetime
-import deltalake
+from pathlib import Path
+from typing import Optional
+from uuid import uuid4
+import pandas as pd
 
-from src.parsers.base_parser import BaseParser
-from src.parsers.baskets_parser import BasketsParser
-from src.pipelines.ingester import write_to_bronze
-from config import INBOX_DIR, FAILED_DIR, PROCESSED_DIR, INGESTION_MAPPINGS
+import src.parsers
+from src.ingestor import ingest
 from src.utils.logger import get_logger
+from config import INBOX_DIR, PROCESSED_DIR, FAILED_DIR, BRONZE_DIR, INGESTION_MAPPINGS
 
 logger = get_logger(__name__)
 
-# Map parser class names to actual classes
-PARSERS_MAP = {
-    "BaseParser": BaseParser,
-    "BasketsParser": BasketsParser
+# Map parser names to actual functions
+EXTRACTORS = {
+    "extract_pcf": src.parsers.extract_pcf,
+    "extract_inkind": src.parsers.extract_inkind,
+    "extract_generic_csv": src.parsers.extract_generic_csv,
 }
 
 
-def main():
-    """Run ingestion pipeline: discover files -> parse -> bronze -> silver -> gold."""
-    bronze_failures = []
-    silver_failures = []
-    gold_failures = []
-    processed_count = 0
-
-    pipeline_start_time = datetime.now()
+def main() -> None:
+    """Run ETL pipeline: discover files, parse, and ingest to bronze."""
+    batch_id = f"{uuid4()}"
+    # logger.info("Starting bronze ingestion pipeline | batch=%s", batch_id)
 
     for file_path in INBOX_DIR.iterdir():
         if not file_path.is_file():
             continue
 
-        logger.info(f"Processing file: {file_path.name}")
+        # Check for mapping
+        mapping = _get_mapping(file_path.name)
+        if not mapping:
+            logger.warning("No mapping found | batch=%s | file=%s",
+                           batch_id, file_path.name)
+            _move_to_failed(file_path)
+            continue
 
+        # Ingest to bronze
         try:
-            parsed = _parse_file(file_path)
-
-            # BRONZE - Fail fast, move file to failed folder
-            try:
-                ingest_into_bronze(file_path, parsed)
-            except Exception as e:
-                _move_to_failed(file_path)
-                bronze_failures.append((file_path.name, str(e)))
-                logger.error(f"✗ BRONZE FAILED: {file_path.name} | {e}")
-                continue  # Skip silver/gold for this file
-
-            # SILVER - Log failure, keep file in place
-            try:
-                process_into_silver(file_path, parsed)
-            except Exception as e:
-                silver_failures.append((file_path.name, str(e)))
-                logger.error(f"✗ SILVER FAILED: {file_path.name} | {e}")
-                continue  # Skip gold for this file
-
-            # GOLD - Log failure, keep file in place
-            try:
-                publish_into_gold(file_path, parsed)
-            except Exception as e:
-                gold_failures.append((file_path.name, str(e)))
-                logger.error(f"✗ GOLD FAILED: {file_path.name} | {e}")
-                continue
-
-            # All layers succeeded
+            parsed_df = _parse_file(file_path, mapping)
+            target_path = BRONZE_DIR / mapping.get("bronze_table")
+            ingest(
+                df=parsed_df,
+                source_name=file_path.name,
+                target_path=target_path,
+                batch_id=batch_id,
+                current_time=pd.Timestamp.now(tz="US/Eastern"),
+                write_mode=mapping.get("load_type", "append")
+            )
             _move_to_processed(file_path)
-            processed_count += 1
-            logger.info(f"✓ COMPLETED: {file_path.name}")
 
         except Exception as e:
-            logger.error(f"Unexpected error for {file_path.name}: {e}")
+            logger.error("Bronze ingestion failed | batch_id=%s | file=%s | error=%s",
+                         batch_id, file_path.name, str(e))
+            _move_to_failed(file_path)
 
-    pipeline_end_time = datetime.now()
-
-    # Send email only if there are failures
-    if bronze_failures or silver_failures or gold_failures:
-        _send_failure_email(
-            processed_count,
-            bronze_failures,
-            silver_failures,
-            gold_failures,
-            pipeline_start_time,
-            pipeline_end_time
-        )
+    # logger.info("Pipeline run complete | batch_id=%s", batch_id)
 
 
-def ingest_into_bronze(df: pd.DataFrame, bronze_path: Path, load_type: str) -> None:
-    """Write DataFrame to Bronze layer as Delta Lake table.
+def _get_mapping(filename: str) -> Optional[dict]:
+    """
+    Find mapping for a given filename by pattern matching.
 
     Args:
-        df: DataFrame to write.
-        bronze_path: Target delta table path in bronze layer.
-        load_type: delta lake write mode, either "append" or "replace".
+        filename: Name of the file to match against patterns.
     """
-    # df["_source_file"] = file_path.name
-    # df["_load_type"] = load_type
-    # df["_ingested_at"] = pd.Timestamp.now(tz="US/Eastern")
-
-    # Determine target path and write mode
-    # Create target directory if not exists
-    bronze_path.mkdir(parents=True, exist_ok=True)
-
-    # Write using deltalake
-    if load_type == "replace":
-        deltalake.write_deltalake(str(bronze_path), df, mode="overwrite")
-    else:  # append
-        deltalake.write_deltalake(str(bronze_path), df, mode="append")
+    for pattern, mapping in INGESTION_MAPPINGS.items():
+        if pattern in filename:
+            return mapping
+    return None
 
 
-def process_into_silver(file_path: Path, parsed_data: dict) -> None:
-    pass
+def _parse_file(file_path: Path, mapping: dict):
+    """
+    Parse file using the specified parser.
 
-
-def publish_into_gold(file_path: Path, parsed_data: dict) -> None:
-    pass
+    Args:
+        file_path: Path to the file to parse.
+        mapping: Configuration mapping with parser name.
+    """
+    parser_name = mapping.get("parser")
+    parser_fn = EXTRACTORS.get(parser_name)
+    if not parser_fn:
+        raise ValueError(f"Unknown parser: {parser_name}")
+    return parser_fn(file_path)
 
 
 def _move_to_processed(file_path: Path) -> None:
-    """Move file to processed folder after successful pipeline completion."""
+    """
+    Move file to processed folder after successful bronze ingestion.
+
+    Args:
+        file_path: Path to the file to move.
+    """
     PROCESSED_DIR.mkdir(parents=True, exist_ok=True)
-    new_path = PROCESSED_DIR / file_path.name
+    # Organize processed files into year/month/day subdirectories
+    now = pd.Timestamp.now(tz="US/Eastern")
+    subdir = PROCESSED_DIR / f"{now.year}" / \
+        f"{now.strftime('%B')}" / f"{now.day:02d}"
+    subdir.mkdir(parents=True, exist_ok=True)
+    new_path = subdir / file_path.name
     file_path.rename(new_path)
 
 
 def _move_to_failed(file_path: Path) -> None:
-    """Move file to failed folder if bronze layer fails."""
+    """
+    Move file to failed folder if ingestion fails.
+
+    Args:
+        file_path: Path to the file to move.
+    """
     FAILED_DIR.mkdir(parents=True, exist_ok=True)
-    new_path = FAILED_DIR / file_path.name
+    now = pd.Timestamp.now(tz="US/Eastern")
+    # format month as name instead of number
+    subdir = FAILED_DIR / f"{now.year}" / \
+        f"{now.strftime('%B')}" / f"{now.day:02d}"
+    subdir.mkdir(parents=True, exist_ok=True)
+    new_path = subdir / file_path.name
     file_path.rename(new_path)
 
 

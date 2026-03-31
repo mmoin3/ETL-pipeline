@@ -1,17 +1,22 @@
-from unittest import result
-import polars as pl
 import pandas as pd
 import csv
 from pathlib import Path
-import logging
+from src.utils.logger import get_logger
 
-logger = logging.getLogger(__name__)
+logger = get_logger(__name__)
 
-def parse_inkind(file_path: Path) -> pd.DataFrame:
+
+def extract_generic_csv(file_path: Path) -> pd.DataFrame:
+    """Simple parser for generic CSV files."""
+    return pd.read_csv(file_path)
+
+
+def extract_inkind(file_path: Path) -> pd.DataFrame:
     """Custom parser for the In-Kind files: Harvest_INKIND.YYYYMMDD.TXT."""
     return pd.read_csv(file_path, skiprows=1)
 
-def parse_pcf(file_path: Path) -> pd.DataFrame:
+
+def extract_pcf(file_path: Path) -> pd.DataFrame:
     """Custom parser for the basket files: Harvest_INAVBSKT_ALL.YYYYMMDD.CSV,
     and Harvest_BSKT_ALL.YYYYMMDD.CSV.
 
@@ -38,7 +43,7 @@ def parse_pcf(file_path: Path) -> pd.DataFrame:
         enriched_holdings_list.append(holdings_df)
 
     # Concatenate all blocks into one big table
-    return pd.concat(enriched_holdings_list, ignore_index=True).dropna(axis=1, how="all") if enriched_holdings_list else pd.DataFrame()
+    return pd.concat(enriched_holdings_list, ignore_index=True) if enriched_holdings_list else pd.DataFrame()
 
 
 def _split_into_blocks(df: pd.DataFrame, markers: str = "TRADE_DATE") -> list[pd.DataFrame]:
@@ -75,9 +80,12 @@ def _extract_pcf_metrics(df: pd.DataFrame) -> dict:
     for i in range(1, len(df)):
         row = df.iloc[i]
         for j in range(0, len(row)-1, 2):
-            metrics_dict[row[j]] = row[j + 1]
-
+            key = row[j]
+            value = row[j + 1]
+            if pd.notna(key):  # Skip NaN keys to avoid 'nan' column headers
+                metrics_dict[key] = value
     return metrics_dict
+
 
 def extract(file_path: Path, ext_override: str = None, **kwargs) -> pd.DataFrame:
     """
@@ -135,14 +143,9 @@ def _extract_complex(file_path: Path, **csv_kwargs) -> pd.DataFrame:
             records.append(row)
     return pd.DataFrame(records)
 
+
 if __name__ == "__main__":
-    # Example usage
-    inkind = Path(
-        r"/Users/muneebmoin/Desktop/ETL-pipeline/data/ misc/Harvest_mft_data/Harvest_Preburst_INKIND_ALL.20260325.TXT")
     pcf_file = Path(
-        r"/Users/muneebmoin/Desktop/ETL-pipeline/data/ misc/Harvest_mft_data/Harvest_INAVBSKT_ALL.20260325.CSV")
-    df = parse_pcf(pcf_file)
+        r"C:\Users\mmoin\PYTHON PROJECTS\data-pipeline\data\0_raw data\Harvest_INAVBSKT_ALL.20260227.CSV")
+    df = extract_pcf(pcf_file)
     print(df.head(15))
-    print(df.columns.tolist())
-    print(df.columns[pd.notna(df.columns)].shape)
-    print(df.shape)

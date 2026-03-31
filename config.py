@@ -12,9 +12,11 @@ ROOT_DIR = Path(__file__).resolve().parent
 INBOX_DIR = ROOT_DIR / "data" / "landing" / "inbox"
 PROCESSED_DIR = ROOT_DIR / "data" / "landing" / "processed"
 FAILED_DIR = ROOT_DIR / "data" / "landing" / "failed"
+QUARANTINE_DIR = ROOT_DIR / "data" / "quarantine"
 BRONZE_DIR = ROOT_DIR / "data" / "bronze"
 SILVER_DIR = ROOT_DIR / "data" / "silver"
 GOLD_DIR = ROOT_DIR / "data" / "gold"
+LOG_DIR = ROOT_DIR / "logs"
 
 # ===== Database Configuration =====
 DUCKDB_FILE = ROOT_DIR / "data" / "FundOperations.duckdb"
@@ -34,47 +36,29 @@ MFT_KEY_PATH = ROOT_DIR.parent/"mmoinclient.key"
 
 # ===== Ingestion Mappings =====
 # Defines the ingestion workflow: when a file is discovered, its filename is matched against
-# this mapping to determine (1) which parser to use, (2) how to load the data (append/replace),
-# and (3) where each parsed output goes in the bronze layer.
+# this mapping to determine (1) which parser to use, (2) write mode, and (3) target bronze table.
 #
-# For example, any file with "Harvest_INAVBSKT_ALL" in its name will:
-#   - Be parsed by BasketsParser
-#   - Return two DataFrames: "metrics" and "holdings"
-#   - "metrics" gets loaded into pcf_creation_bskt_metrics
-#   - "holdings" gets loaded into pcf_creation_bskt_holdings
-#   - Use append mode (don't replace existing data)
-#
-# Keys in "outputs" MUST match the keys returned by parser.parse() exactly.
+# One file → One parser → One DataFrame → One bronze table
 
 INGESTION_MAPPINGS = {
-    "Harvest_INAVBSKT_ALL": {
-        "parser": "BasketsParser",
+    "Harvest_INAVBSKT_ALL.": {
+        "parser": "extract_pcf",
         "load_type": "append",
-        "outputs": {
-            "metrics": "pcf_creation_bskt_metrics",
-            "holdings": "pcf_creation_bskt_holdings"
-        }
+        "bronze_table": "pcf_inav_baskets"
     },
-    "Harvest_BSKT": {
-        "parser": "BasketsParser",
+    "Harvest_BSKT_ALL.": {
+        "parser": "extract_pcf",
         "load_type": "append",
-        "outputs": {
-            "metrics": "pcf_inav_bskt_metrics",
-            "holdings": "pcf_inav_bskt_holdings"
-        }
+        "bronze_table": "pcf_creation_baskets"
     },
     "All_Positions": {
-        "parser": "BaseParser",
+        "parser": "extract_generic_csv",
         "load_type": "append",
-        "outputs": {
-            "data": "all_positions"
-        }
+        "bronze_table": "all_positions"
     },
     "PLF_Positions": {
-        "parser": "BaseParser",
+        "parser": "extract_generic_csv",
         "load_type": "append",
-        "outputs": {
-            "data": "plf_positions"
-        }
+        "bronze_table": "plf_positions"
     },
 }
