@@ -61,7 +61,8 @@ class StateStreetMFTClient:
             return file_path
 
         logger.info(f"Downloading: {filename}")
-        response = self.session.get(f"{MFT_BASE_URL}/files{remote_path}?attachment=", timeout=30, stream=True)
+        response = self.session.get(
+            f"{MFT_BASE_URL}/files{remote_path}?attachment=", timeout=30, stream=True)
         response.raise_for_status()
 
         self.download_dir.mkdir(parents=True, exist_ok=True)
@@ -78,7 +79,8 @@ class StateStreetMFTClient:
         Args:
             remote_folder: Folder path (e.g., '/ETFGlobalHarvest/fromSSC').
         """
-        response = self.session.get(f"{MFT_BASE_URL}/files{remote_folder}", timeout=30)
+        response = self.session.get(
+            f"{MFT_BASE_URL}/files{remote_folder}", timeout=30)
         response.raise_for_status()
         return response.json().get("files", [])
 
@@ -90,11 +92,13 @@ class StateStreetMFTClient:
             remote_path: Remote destination path (e.g., '/uploads/file.csv').
         """
         with open(local_file, "rb") as f:
-            response = self.session.post(f"{MFT_BASE_URL}/files{remote_path}", files={"file": f}, timeout=30)
+            response = self.session.post(
+                f"{MFT_BASE_URL}/files{remote_path}", files={"file": f}, timeout=30)
 
         response.raise_for_status()
         logger.info(f"Uploaded: {local_file.name}")
         return True
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.INFO)
@@ -103,6 +107,8 @@ if __name__ == "__main__":
         files = client.list_files("/ETFGlobalHarvest/fromSSC")
         for f in files:
             if not f.get("directory"):
-                logger.info(f"  {f.get('filename')} ({f.get('attributes', {}).get('FSR_FILE_SYS_MD.FILE_SIZE', '?')} bytes)")
+                logger.info(
+                    f"  {f.get('filename')} ({f.get('attributes', {}).get('FSR_FILE_SYS_MD.FILE_SIZE', '?')} bytes)")
 
-        client.download("/ETFGlobalHarvest/fromSSC/Harvest_Preburst_INKIND_ALL.20260317.TXT")
+        client.download(
+            "/ETFGlobalHarvest/fromSSC/Harvest_Preburst_INKIND_ALL.20260317.TXT")

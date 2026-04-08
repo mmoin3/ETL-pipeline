@@ -3,6 +3,32 @@ import csv
 from pathlib import Path
 
 
+def extract_cil(file_path: Path) -> pd.DataFrame:
+    """Custom parser for the CIL files: Harvest_CIL_ALL.YYYYMMDD.CSV.
+
+    Returns:
+        Single unified DataFrame with all CIL records
+    """
+    df = extract_complex(file_path)
+    df_new = pd.DataFrame(
+        data=df.values[2:], columns=df.iloc[1]).reset_index(drop=True)
+    df_new[df.iloc[0, 0]] = df.iloc[0, 1]
+    return df_new
+
+
+def extract_accounting_navs(file_path: Path) -> pd.DataFrame:
+    """Custom parser for the accounting nav files: Harvest Price File - YYYYMMDD.CSV.
+
+    Returns:
+        Single unified DataFrame with all accounting nav records
+    """
+    df = pd.read_excel(file_path, engine="xlrd", header=None)
+    df_new = pd.DataFrame(
+        data=df.values[4:], columns=df.iloc[3]).reset_index(drop=True)
+    df_new[df.iloc[1, 6]] = df.iloc[1, 7]
+    return df_new
+
+
 def extract_pcf(file_path: Path) -> pd.DataFrame:
     """Custom parser for the basket files: Harvest_INAVBSKT_ALL.YYYYMMDD.CSV,
     and Harvest_BSKT_ALL.YYYYMMDD.CSV.
@@ -10,7 +36,7 @@ def extract_pcf(file_path: Path) -> pd.DataFrame:
     Returns:
         Single unified DataFrame with holdings + metrics columns
     """
-    df = extract_complex(file_path)
+    df = pd.read_csv(file_path, header=None, names=range(25))
     blocks = _split_into_blocks(df, markers="TRADE_DATE")
 
     enriched_holdings_list = []
@@ -127,12 +153,12 @@ def extract_complex(file_path: Path, **csv_kwargs) -> pd.DataFrame:
             if csv_kwargs.pop("skip_empty", False) and not any(row):
                 continue
             records.append(row)
-        reader.close()
     return pd.DataFrame(records)
 
 
 if __name__ == "__main__":
     pcf_file = Path(
-        r"C:\Users\mmoin\PYTHON PROJECTS\data-pipeline\data\0_raw data\Harvest_INAVBSKT_ALL.20260227.CSV")
-    df = extract_pcf(pcf_file)
+        r"C:\Users\mmoin\PYTHON PROJECTS\data-pipeline\data\landing\inbox\Harvest Price File -04022026.XLS")
+    df = extract_accounting_navs(pcf_file)
+    print(df.columns)
     print(df.head(15))

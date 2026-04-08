@@ -116,8 +116,7 @@ def _move_to_failed(file_path: Path) -> None:
     FAILED_DIR.mkdir(parents=True, exist_ok=True)
     now = pd.Timestamp.now(tz="US/Eastern")
     # format month as name instead of number
-    subdir = FAILED_DIR / f"{now.year}" / \
-        f"{now.strftime('%B')}"
+    subdir = FAILED_DIR
     subdir.mkdir(parents=True, exist_ok=True)
     new_path = subdir / file_path.name
     file_path.rename(new_path)

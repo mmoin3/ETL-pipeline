@@ -9,18 +9,20 @@ logger = get_logger(__name__)
 
 
 def ingest(df: pd.DataFrame, source_name: str, current_time: pd.Timestamp,
-           target_path: Union[str, Path], batch_id: str, write_mode: str = "append") -> pd.DataFrame:
+           target_path: Union[str, Path], batch_id: str, write_mode: str = "append",
+           merge_schema: bool = True) -> pd.DataFrame:
     """
     Load a DataFrame to the bronze Delta table. Adds metadata columns
     and writes data in append or overwrite mode.
 
     Args:
-        df:           Input DataFrame.
-        source_name:  Source file name.
-        current_time: Timestamp for ingestion.
-        target_path:  Destination Delta table path.
-        batch_id:     Unique identifier for this ingestion batch.
-        write_mode:   "overwrite" or "append" (default: "append").
+        df:            Input DataFrame.
+        source_name:   Source file name.
+        current_time:  Timestamp for ingestion.
+        target_path:   Destination Delta table path.
+        batch_id:      Unique identifier for this ingestion batch.
+        write_mode:    "overwrite" or "append" (default: "append").
+        merge_schema:  Allow new columns in incoming data (default: True).
     """
     if not isinstance(df, pd.DataFrame):
         raise TypeError("df must be a pandas DataFrame.")
