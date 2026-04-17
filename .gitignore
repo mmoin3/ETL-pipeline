@@ -11,6 +11,7 @@ myvenv/
 #logs and databases
 *.sqlite
 *.db
+*.duckdb
 logs/
 *.log
 

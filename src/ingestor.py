@@ -12,13 +12,13 @@ import polars as pl
 logger = get_logger(__name__)
 
 
-def ingest(df: pd.DataFrame,
-           source_name: str,
-           current_time: pd.Timestamp,
-           target_path: Union[str, Path],
-           batch_id: str,
-           write_mode: str = "append",
-           merge_schema: bool = True) -> pd.DataFrame:
+def ingest_into_bronze(df: pd.DataFrame,
+                       source_name: str,
+                       current_time: pd.Timestamp,
+                       target_path: Union[str, Path],
+                       batch_id: str,
+                       write_mode: str = "append",
+                       merge_schema: bool = True) -> pd.DataFrame:
     """
     Load a DataFrame to the bronze Delta table. Adds metadata columns
     and writes data in append or overwrite mode.
@@ -58,9 +58,9 @@ def ingest(df: pd.DataFrame,
     return out
 
 
-def upsert_to_silver(
+def upsert_into_silver(
     silver_table_name: str,
-    con: duckdb.DuckDBPyConnection,
+    conn: duckdb.DuckDBPyConnection,
     silver_path: Path,
     merge_keys: list = None,
 ) -> None:
@@ -73,7 +73,7 @@ def upsert_to_silver(
 
     Args:
         silver_table_name:  Name of the silver table.
-        con:                DuckDB connection with "transformed" view ready.
+        conn:                DuckDB connection with "transformed" view ready.
         silver_path:        Path to silver delta table directory.
         merge_keys:         List of columns to upsert on. If None, overwrites.
     """
@@ -91,7 +91,7 @@ def upsert_to_silver(
         FROM transformed AS t,
         (SELECT DISTINCT batch_id FROM bronze) AS meta
     """
-    con.create_table("with_metadata", con.execute(wrapped_sql))
+    conn.create_table("with_metadata", conn.execute(wrapped_sql))
 
     # Upsert or overwrite
     if merge_keys:
@@ -100,7 +100,7 @@ def upsert_to_silver(
 
         if not delta_log_path.exists():
             # First run: create table with transformed data
-            con.execute(f"""
+            conn.execute(f"""
                 CREATE TABLE delta_scan('{silver_path}') AS
                 SELECT * FROM with_metadata
             """)
@@ -109,7 +109,7 @@ def upsert_to_silver(
             # Subsequent runs: merge with SCD2 tracking
             on_clause = " AND ".join(
                 [f"target.{k} = source.{k}" for k in merge_keys])
-            con.execute(f"""
+            conn.execute(f"""
                 MERGE INTO delta_scan('{silver_path}') AS target
                 USING with_metadata AS source
                 ON {on_clause}
@@ -118,7 +118,7 @@ def upsert_to_silver(
             """)
             write_mode = "merge"
     else:
-        con.execute(f"""
+        conn.execute(f"""
             CREATE OR REPLACE TABLE delta_scan('{silver_path}') AS
             SELECT * FROM with_metadata
         """)

@@ -1,6 +1,7 @@
 # Configuration file for ETL pipeline. Contains constants, maps, file paths, and settings.
 # Serves as a single source of truth for configuration values used across the project.
 
+from dataclasses import dataclass
 import os
 import pandas as pd
 from pathlib import Path
@@ -183,7 +184,7 @@ INGESTION_MAPPINGS = {
         "bronze_table": "top10_net_asset_values"
     },
     "Harvest_UCF": {
-        "parser": partial(pd.read_csv, na_values="", keep_default_na=False),
+        "parser": src.parsers.extract_ucf,
         "rename": False,
         "load_type": "append",
         "bronze_table": "ucf_records"
@@ -196,13 +197,13 @@ INGESTION_MAPPINGS = {
     },
     "securities.csv": {
         "parser": partial(pd.read_csv, na_values="", keep_default_na=False),
-        "rename": False,
+        "rename": True,
         "load_type": "append",
         "bronze_table": "all_securities"
     },
     "exchanges.csv": {
         "parser": partial(pd.read_csv, na_values="", keep_default_na=False),
-        "rename": False,
+        "rename": True,
         "load_type": "append",
         "bronze_table": "all_exchanges_codes"
     },
@@ -211,6 +212,24 @@ INGESTION_MAPPINGS = {
         "rename": False,
         "load_type": "append",
         "bronze_table": "cds_monthly_participant_reports"
+    },
+    "harvest_fund_identifiers": {
+        "parser": partial(pd.read_csv, na_values="", keep_default_na=False),
+        "rename": True,
+        "load_type": "append",
+        "bronze_table": "harvest_fund_identifiers"
+    },
+    "history_all_distributions": {
+        "parser": partial(pd.read_csv, na_values="", keep_default_na=False),
+        "rename": True,
+        "load_type": "append",
+        "bronze_table": "bbg_history_all_distributions"
+    },
+    "bbg_history_all_funds_monthly_navs": {
+        "parser": partial(pd.read_csv, na_values="", keep_default_na=False),
+        "rename": True,
+        "load_type": "append",
+        "bronze_table": "bbg_history_all_funds_monthly_navs"
     },
 }
 
@@ -242,6 +261,30 @@ INGESTION_MAPPINGS = {
 #     "merge_keys": ["fund_id"],
 # }
 
+
+@dataclass
+class SilverMapping:
+    silver_table_name: str
+    table_type: str  # "dimension" or "fact" or "SCD2"
+    columns_map: dict[str, str]  # bronze_col -> silver_col
+    natural_keys: list[str]
+    # function that takes bronze DataFrame and returns transformed silver DataFrame
+    transformer: callable
+
+
 SILVER_MAPPINGS = {
-    # Add table transformations here as you build silver layer
+    "slv_cds_monthly_participant_reports": SilverMapping(
+        silver_table_name="cds_monthly_participant_reports",
+        table_type="fact",
+        columns_map={
+            "Date": "report_date",
+            "ISIN": "isin_id",
+            "Fund Name": "fund_name",
+            "CUID": "cuid_id",
+            "Participant": "participant_name",
+            "Shares": "shares_held",
+        },
+        natural_keys=["report_date", "isin_id", "cuid_id"],
+        transformer=src.transformer.clean_cds_participant_report
+    ),
 }

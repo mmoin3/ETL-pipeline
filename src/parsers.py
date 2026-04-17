@@ -16,6 +16,30 @@ def extract_cil(file_path: Path) -> pd.DataFrame:
     return df_new
 
 
+def extract_ucf(file_path: Path) -> pd.DataFrame:
+    """Custom parser for the UCF files: Harvest_UCF_ALL.YYYYMMDD.CSV.
+
+    Returns:
+        Single unified DataFrame with all UCF records
+    """
+    df = pd.read_csv(file_path, header=None, names=range(34))
+    blocks = _split_into_blocks(df, markers="FUND_NAME")
+    holdings_list = []
+    for block in blocks:
+        metrics_df = pd.concat(
+            [block.iloc[:7], block.iloc[-16:]], ignore_index=True).reset_index(drop=True)
+        metrics_dict = _extract_ucf_metrics(metrics_df)
+
+        holdings_df = pd.DataFrame(
+            data=block.iloc[8:-16].values, columns=block.iloc[7].tolist()).reset_index(drop=True)
+
+        for key, value in metrics_dict.items():
+            holdings_df[key] = value
+        holdings_list.append(holdings_df)
+
+    return pd.concat(holdings_list, ignore_index=True) if holdings_list else pd.DataFrame()
+
+
 def extract_accounting_navs(file_path: Path) -> pd.DataFrame:
     """Custom parser for the accounting nav files: Harvest Price File - YYYYMMDD.CSV.
 
@@ -100,6 +124,25 @@ def _extract_pcf_metrics(df: pd.DataFrame) -> dict:
     return metrics_dict
 
 
+def _extract_ucf_metrics(df: pd.DataFrame) -> dict:
+    """Extract metrics from the first 8 lines of each block."""
+    metrics_dict = {}
+    metrics_dict["ORDER_TYPE"] = df.iloc[6, 0]
+    metrics_dict['BROKER_NAME'] = df.iloc[3, 2]
+
+    # Clear this cell to avoid it being treated as a column header
+    df.iloc[3, 2] = None
+    df.drop(index=6, inplace=True)  # Drop the 6th row
+    for i in range(len(df)):
+        row = df.iloc[i]
+        for j in range(0, len(row)-1, 2):
+            key = row[j]
+            value = row[j + 1]
+            if pd.notna(key):  # Skip NaN keys to avoid 'nan' column headers
+                metrics_dict[key] = value
+    return metrics_dict
+
+
 # def extract(file_path: Path, ext_override: str = None, **kwargs) -> pd.DataFrame:
 #     """
 #     Simple extracter function that can handle 80% of files by just reading them into a dataframe.
@@ -157,8 +200,9 @@ def extract_complex(file_path: Path, **csv_kwargs) -> pd.DataFrame:
 
 
 if __name__ == "__main__":
-    pcf_file = Path(
-        r"C:\Users\mmoin\PYTHON PROJECTS\data-pipeline\data\landing\inbox\Harvest Price File -04022026.XLS")
-    df = extract_accounting_navs(pcf_file)
+    ucf_file = Path(
+        r"C:\Users\mmoin\PYTHON PROJECTS\DataWareHouse\landing\inbox\Harvest_UCF.20260330.CSV")
+    df = extract_ucf(ucf_file)
     print(df.columns)
     print(df.head(15))
+    print(df['ORDER_TYPE'])

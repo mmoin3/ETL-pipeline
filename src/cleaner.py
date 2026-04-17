@@ -1,106 +1,103 @@
-# ========================================================
-# Data cleaning and type casting utilities for financial data pipelines.
-# Supports: numeric (US/EU formats), percentages, timezone-aware dates, strings.
-# Handles malformed data, missing values, and international number formats.
-# ========================================================
-
+from numpy import dtype
 import polars as pl
+import re
+from pathlib import Path
+import duckdb
 
 
-def clean(
-    data: pl.DataFrame,
-    schema: dict = None,
-    date_format: str = "%m/%d/%Y",
-    number_format: str = "US",
-) -> pl.DataFrame:
-    """Clean and cast DataFrame columns in three passes:
-      1. Strip whitespace/junk chars and null-empty ALL string columns.
-      2. Cast columns named in schema to their explicit types.
-      3. Infer types for remaining string columns (Int64 → Float64 → leave as String).
+def clean_basic(df: pl.LazyFrame, config: dict) -> pl.LazyFrame:
+    """Consolidated rename and vectorized cast."""
 
-    Supported schema types:
-        float, int           — numeric extraction (handles commas, currency symbols)
-        "pct"/"percent"      — numeric extraction divided by 100
-        "datetime"/"date"    — parse to Polars Datetime (UTC)
+    # Get current names from the LazyFrame schema
+    current_cols = df.collect_schema().names()
+    custom_map = config.get("columns_map", {})
 
-    Args:
-        data:          Input Polars DataFrame.
-        schema:        Dict mapping column names to target types.
-        date_format:   strptime format string for date columns (default: "%m/%d/%Y").
-        number_format: "US" (1,234.56) or "EU" (1.234,56) (default: "US").
-    """
-    schema = schema or {}
+    # 1. BUILD A SINGLE MAPPING
+    # Priority: 1. Custom Map, 2. Snake_case conversion
+    final_mapping = {}
+    for col in current_cols:
+        if col in custom_map:
+            final_mapping[col] = custom_map[col]
+        else:
+            # Fallback to snake_case
+            new_name = col.strip().lower().replace(" ", "_")
+            if new_name != col:
+                final_mapping[col] = new_name
 
-    # ── Step 1: clean all string columns first ────────────────────────────
-    string_exprs = [
-        pl.col(col)
-        .str.strip_chars()
-        .str.strip_chars_start("'\"\\ ")
-        .str.strip_chars_end("'\"\\ ")
-        .replace("", None)
-        .alias(col)
-        for col in data.columns
-        if data[col].dtype == pl.String
-    ]
-    df = data.with_columns(string_exprs) if string_exprs else data
+    if final_mapping:
+        df = df.rename(final_mapping)
 
-    # ── Step 2: explicit casts from schema ────────────────────────────────
-    cast_exprs = []
-    for col, target in schema.items():
-        if col not in df.columns:
+    # 2. APPLY SCHEMA-BASED TYPE CASTING
+    schema = config.get("schema", {})
+    expressions = []
+
+    # Get the names AFTER the rename to ensure Step 3 finds the right targets
+    post_rename_cols = df.collect_schema().names()
+
+    for orig_col, dtype in schema.items():
+        # Determine what the column is named NOW
+        target_col = custom_map.get(
+            orig_col, orig_col.strip().lower().replace(" ", "_"))
+
+        if target_col not in post_rename_cols:
+            print(
+                f"Warning: Expected column '{target_col}' not found after rename.")
             continue
 
-        if target in (float, int):
-            numeric = pl.col(col).str.extract(r"(-?[\d.,]+)")
-            if number_format.upper() == "EU":
-                numeric = numeric.str.replace_all(
-                    ".", "", literal=True).str.replace_all(",", ".", literal=True)
-            else:
-                numeric = numeric.str.replace_all(",", "", literal=True)
-            numeric = numeric.cast(pl.Float64, strict=False)
-            if target == int:
-                numeric = numeric.round(0).cast(pl.Int64, strict=False)
-            cast_exprs.append(numeric.alias(col))
+        # Regex for numbers (handling commas and signs)
+        num_expr = pl.col(target_col).str.replace_all(
+            ",", "").str.extract(r"(-?[\d.]+)")
 
-        elif isinstance(target, str) and target.lower() in ("pct", "percent", "percentage"):
-            numeric = (
-                pl.col(col).str.extract(r"(-?[\d.,]+)")
-                .str.replace_all(",", "", literal=True)
-                .cast(pl.Float64, strict=False)
+        if dtype in [float, "float"]:
+            expressions.append(num_expr.cast(
+                pl.Float64, strict=False).alias(target_col))
+
+        elif dtype in [int, "int"]:
+            expressions.append(num_expr.cast(
+                pl.Float64, strict=False).cast(pl.Int64, strict=False).alias(target_col))
+
+        elif dtype in ["pct", "percent", "percentage"]:
+            expressions.append(
+                (num_expr.cast(pl.Float64, strict=False) / 100).alias(target_col))
+
+        elif isinstance(dtype, dict) and dtype.get("type") == "datetime":
+            fmt = dtype.get("format", "%Y-%m-%d")
+            expressions.append(pl.col(target_col).str.to_datetime(
+                format=fmt, strict=False).alias(target_col))
+
+        elif dtype in [str, "str"]:
+            # Standard string scrub
+            expressions.append(
+                pl.col(target_col).str.strip_chars().str.replace(
+                    r"^'", "").alias(target_col)
             )
-            cast_exprs.append((numeric / 100.0).alias(col))
 
-        elif isinstance(target, str) and target.lower() in ("datetime", "date", "timestamp"):
-            cast_exprs.append(
-                pl.col(col)
-                .str.strptime(pl.Datetime("us", "UTC"), format=date_format, strict=False)
-                .alias(col)
-            )
+    if expressions:
+        df = df.with_columns(expressions)
 
-    df = df.with_columns(cast_exprs) if cast_exprs else df
-
-    # ── Step 3: infer types for columns not named in schema ───────────────
-    infer_exprs = []
-    for col in df.columns:
-        if col in schema or df[col].dtype != pl.String:
-            continue
-        null_count = df[col].null_count()
-        if df[col].cast(pl.Int64, strict=False).null_count() == null_count:
-            infer_exprs.append(pl.col(col).cast(pl.Int64, strict=False))
-        elif df[col].cast(pl.Float64, strict=False).null_count() == null_count:
-            infer_exprs.append(pl.col(col).cast(pl.Float64, strict=False))
-        # else: leave as cleaned string
-
-    return df.with_columns(infer_exprs) if infer_exprs else df
+    return df
 
 
 if __name__ == "__main__":
-    test_df = pl.DataFrame({
-        "price":  ["  '1,234.56' ", "1,200.00"],
-        "weight": ["7.89 %", "10%"],
-        "date":   ["04/17/25", "03/01/26"],
-        "name":   ["'Some text", "Nothing''"],
-    })
-    cleaned = clean(test_df, schema={
-                    "price": float, "weight": "pct", "date": "datetime"})
-    print(cleaned)
+    # example usage
+    config = {
+        "columns_map": {
+            "Shares": "share_count",
+            "CUID": "cuid_id"
+        },
+        "schema": {
+            "Shares": int,
+            "Date": {"type": "datetime", "format": "%m/%d/%Y"},
+        },
+    }
+    con = duckdb.connect()
+    arrow_stream = con.execute(
+        "SELECT * FROM delta_scan('C:/Users/mmoin/PYTHON PROJECTS/DataWareHouse/bronze/cds_monthly_participant_reports')").arrow()
+    # Polars can initialize a LazyFrame directly from an Arrow stream
+    lf = pl.from_arrow(arrow_stream).lazy()
+    lf = lf.drop_nulls(subset=["Date", "ISIN", "CUID"])
+
+    # Apply your cleaning and collect at the very end
+    result = clean_basic(lf, config).collect()
+    print("Transformed DataFrame:")
+    print(result)

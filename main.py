@@ -10,7 +10,7 @@ from uuid import uuid4
 import pandas as pd
 import duckdb
 
-from src.ingestor import ingest_into_bronze, upsert_into_silver
+from src.ingestor import ingest_into_bronze
 from src.utils.logger import get_logger
 from config import INBOX_DIR, PROCESSED_DIR, FAILED_DIR, BRONZE_DIR, SILVER_DIR, INGESTION_MAPPINGS, SILVER_MAPPINGS
 
@@ -57,35 +57,35 @@ def main() -> None:
             _move_to_failed(file_path)
 
     # 2) Silver transformations
-    for table_name, mapping in SILVER_MAPPINGS.items():
-        transform_fn = mapping.get("transform_fn")
-        if not transform_fn:
-            logger.warning(f"No transform_fn for {table_name}")
-            continue
+    # for table_name, mapping in SILVER_MAPPINGS.items():
+    #     transform_fn = mapping.get("transform_fn")
+    #     if not transform_fn:
+    #         logger.warning(f"No transform_fn for {table_name}")
+    #         continue
 
-        merge_keys = mapping.get("merge_keys")
-        try:
-            conn = duckdb.connect()
-            bronze_path = BRONZE_DIR / table_name
-            bronze_relation = conn.delta_scan(bronze_path)
-            conn.create_temp_view("bronze", bronze_relation)
-            conn.create_table("transformed", conn.execute(transform_fn()))
-            row_count = conn.execute(
-                "SELECT COUNT(*) FROM transformed").fetchone()[0]
+    #     merge_keys = mapping.get("merge_keys")
+    #     try:
+    #         conn = duckdb.connect()
+    #         bronze_path = BRONZE_DIR / table_name
+    #         bronze_relation = conn.delta_scan(bronze_path)
+    #         conn.create_temp_view("bronze", bronze_relation)
+    #         conn.create_table("transformed", conn.execute(transform_fn()))
+    #         row_count = conn.execute(
+    #             "SELECT COUNT(*) FROM transformed").fetchone()[0]
 
-            upsert_into_silver(
-                silver_table_name=table_name,
-                conn=conn,
-                silver_path=SILVER_DIR / table_name,
-                merge_keys=merge_keys,
-            )
+    #         upsert_into_silver(
+    #             silver_table_name=table_name,
+    #             conn=conn,
+    #             silver_path=SILVER_DIR / table_name,
+    #             merge_keys=merge_keys,
+    #         )
 
-            conn.close()
-            logger.info(f"{table_name} → silver ({row_count} rows)")
+    #         conn.close()
+    #         logger.info(f"{table_name} → silver ({row_count} rows)")
 
-        except Exception as e:
-            logger.error(
-                f"Silver transform failed | table={table_name} | error={e}")
+    #     except Exception as e:
+    #         logger.error(
+    #             f"Silver transform failed | table={table_name} | error={e}")
 
 
 def _get_mapping(filename: str) -> Optional[dict]:
